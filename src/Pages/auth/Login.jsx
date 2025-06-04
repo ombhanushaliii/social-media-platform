@@ -1,104 +1,150 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
-import { motion } from "framer-motion";
 import { useAuth } from "../../Context/AuthContext";
 import { loginUser } from "../../Services/authService";
+
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { login, user } = useAuth();
 
-  useEffect(() => {
-    if (user) {
-      navigate("/dashboard");
-    }
-  }, [user, navigate]);
+  const { login } = useAuth(); // Should store token and user in global context
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError("");
+  setIsLoading(true);
 
-    try {
-      const { user, token } = await loginUser(email, password);
-      login(user, token);
-      navigate("/dashboard");
-    } catch (err) {
-      setError(err.message || "Login failed. Try again.");
-    }
-  };
+  try {
+    const { user, token } = await loginUser(email, password);
+    login(user, token); // ✅ Corrected here
+    navigate("/dashboard");
+  } catch (err) {
+    setError(err.message || "Login failed. Try again.");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900 to-black px-4">
-      <motion.div
-        className="bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full"
-        initial={{ y: 50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.7, ease: "easeOut" }}
-        whileHover={{ scale: 1.03 }}
-      >
-        <h2 className="text-3xl font-bold text-center text-gray-800 mb-8 tracking-wide">
-          Manager Login
-        </h2>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">
-              Email
-            </label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:outline-none transition"
-              placeholder="you@example.com"
-            />
-          </div>
+    <div className="min-h-screen flex" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+      {/* Left - Login Form */}
+      <div className="w-full md:w-1/2 bg-black flex items-center justify-center px-6 py-12 relative z-10">
+        <div className="w-full max-w-md">
+          <h2 className="text-3xl font-bold text-white text-center mb-6">Welcome Back 👋</h2>
+          <p className="text-sm text-gray-400 text-center mb-8">Login to your dashboard</p>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">
-              Password
-            </label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:outline-none transition"
-              placeholder="Enter your password"
-            />
-            <div className="text-right mt-1">
-              <Link
-                to="/forgot-password"
-                className="text-sm text-purple-600 hover:text-purple-800 font-medium transition"
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input
+                type="email"
+                value={email}
+                required
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email"
+                className="w-full bg-neutral-900 text-white pl-10 pr-4 py-3 rounded-lg border border-neutral-700 focus:ring-2 focus:ring-[#4502fa] placeholder-gray-500 outline-none"
+              />
+            </div>
+
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                required
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                className="w-full bg-neutral-900 text-white pl-10 pr-12 py-3 rounded-lg border border-neutral-700 focus:ring-2 focus:ring-[#4502fa] placeholder-gray-500 outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
               >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+
+            <div className="text-right">
+              <Link to="/forgot-password" className="text-sm text-[#4502fa] hover:underline">
                 Forgot Password?
               </Link>
             </div>
+
+            {error && (
+              <div className="bg-red-800/20 text-red-400 text-sm p-3 rounded-md border border-red-700">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-[#4502fa] hover:bg-[#3601d4] text-white py-3 rounded-lg font-semibold shadow-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
+            >
+              {isLoading ? "Signing in..." : (
+                <div className="flex items-center justify-center gap-2">
+                  <span>Login</span> <ArrowRight size={18} />
+                </div>
+              )}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center text-sm text-gray-400">
+            Not registered?{" "}
+            <Link to="/register" className="text-[#4502fa] hover:underline font-medium">
+              Create an account
+            </Link>
           </div>
+        </div>
+      </div>
 
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+      {/* Right Branding/Animation */}
+      <div className="hidden md:flex w-1/2 items-center justify-center relative overflow-hidden">
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `radial-gradient(ellipse at 85% 30%, rgba(0, 85, 255, 0.7), rgba(0, 0, 0, 0) 60%), #000`
+          }}
+        />
+        <div className="relative z-10 text-center px-10">
+          <h1 className="text-white text-4xl font-extrabold mb-4 leading-tight">
+            Welcome to <br />
+            <span className="text-white font-sans bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+              The Best Social Media Management Platform
+            </span>
+          </h1>
+          <p className="text-gray-300 text-md">
+            Manage, schedule and grow — all in one place.
+          </p>
 
-          <button
-            type="submit"
-            className="w-full bg-purple-600 text-white font-semibold py-3 rounded-lg hover:bg-purple-700 transition-all duration-300 transform hover:scale-[1.03]"
-          >
-            Sign In
-          </button>
-        </form>
-
-        <p className="mt-6 text-center text-gray-600 text-sm">
-  Not a user?{" "}
-  <Link
-    to="/Register"
-    className="text-purple-600 font-semibold hover:text-purple-800 transition"
-  >
-    Sign Up
-  </Link>
-</p>
-      </motion.div>
+          <div className="mt-8">
+            <div className="w-40 h-40 mx-auto flex items-center justify-center">
+              <div className="relative">
+                <div
+                  className="w-32 h-32 rounded-full border-4 border-white/20 flex items-center justify-center animate-pulse"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05))',
+                    backdropFilter: 'blur(10px)'
+                  }}
+                >
+                  <div className="text-white text-2xl font-bold">Logo</div>
+                </div>
+                <div className="absolute -top-2 -right-2 w-6 h-6 bg-white/20 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+                <div className="absolute -bottom-3 -left-3 w-4 h-4 bg-white/30 rounded-full animate-bounce" style={{ animationDelay: '1s' }}></div>
+                <div className="absolute top-1/2 -right-4 w-3 h-3 bg-white/25 rounded-full animate-bounce" style={{ animationDelay: '0.5s' }}></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

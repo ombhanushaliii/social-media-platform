@@ -1,283 +1,224 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../Context/AuthContext";
-import { registerUser } from "../../Services/authService";
-import { Link } from "react-router-dom";
 
+// Password Strength Helper
 const passwordStrength = (password) => {
   let score = 0;
   if (password.length >= 8) score++;
   if (/[A-Z]/.test(password)) score++;
   if (/[0-9]/.test(password)) score++;
-  if (/[\W]/.test(password)) score++;
-
-  if (score <= 1) return "Weak";
-  if (score === 2 || score === 3) return "Medium";
-  if (score === 4) return "Strong";
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+  if (score <= 1) return { label: "Weak", color: "text-red-500" };
+  if (score === 2 || score === 3) return { label: "Medium", color: "text-yellow-400" };
+  return { label: "Strong", color: "text-green-500" };
 };
 
 const Register = () => {
-  const [step, setStep] = useState(1);
-  const [form, setForm] = useState({
-    name: "",
-    age: "",
-    email: "",
-    company: "",
-    password: "",
-    confirmPassword: "",
-  });
-  const [error, setError] = useState("");
-  const [passwordStrengthLevel, setPasswordStrengthLevel] = useState("");
-  const [loading, setLoading] = useState(false);
-
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login } = useAuth(); // ✅ Only using login here
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+  const [email, setEmail] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [passStrength, setPassStrength] = useState({ label: "", color: "" });
 
-    if (name === "password") {
-      setPasswordStrengthLevel(passwordStrength(value));
-    }
-  };
-
-  const validateStep = () => {
-    setError("");
-    if (step === 1) {
-      if (!form.name.trim()) return setError("Name is required");
-      if (!form.age || Number(form.age) < 13)
-        return setError("You must be at least 13 years old");
-      if (!form.email.trim()) return setError("Email is required");
-    } else if (step === 3) {
-      if (form.password !== form.confirmPassword) {
-        return setError("Passwords do not match");
-      }
-      if (passwordStrengthLevel === "Weak") {
-        return setError("Please choose a stronger password");
-      }
-    }
-    setError("");
-    return true;
-  };
-
-  const nextStep = () => {
-    if (validateStep()) {
-      setStep((prev) => prev + 1);
-    }
-  };
-
-  const prevStep = () => {
-    setError("");
-    setStep((prev) => prev - 1);
-  };
+  useEffect(() => {
+    setPassStrength(passwordStrength(password));
+  }, [password]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateStep()) return;
-
-    setLoading(true);
     setError("");
 
-    try {
-      const { user, token } = await registerUser({
-        name: form.name,
-        age: form.age,
-        email: form.email,
-        company: form.company,
-        password: form.password,
-      });
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
 
-      login(user, token);
-      navigate("/dashboard");
+    setIsLoading(true);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1500)); // simulate delay
+
+      // Dummy login simulation
+      const userData = { email, companyName };
+      const dummyToken = "fake-jwt-token";
+
+      login(userData, dummyToken); // ✅ update auth context
+      navigate("/dashboard"); // ✅ redirect after login
     } catch (err) {
       setError(err.message || "Registration failed. Try again.");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900 to-black px-4">
-      <motion.div
-        className="bg-white rounded-2xl shadow-2xl p-10 max-w-md w-full"
-        initial={{ y: 50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.7, ease: "easeOut" }}
-      >
-        <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">
-          Secure Registration
-        </h2>
+    <div className="min-h-screen flex" style={{ fontFamily: "Montserrat, sans-serif" }}>
+      {/* Left - Register Form */}
+      <div className="w-full md:w-1/2 bg-black flex items-center justify-center px-6 py-12 relative z-10">
+        <div className="w-full max-w-md">
+          <h2 className="text-3xl font-bold text-white text-center mb-6">Create Your Account 👋</h2>
+          <p className="text-sm text-gray-400 text-center mb-8">Register to get started</p>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Step 1: Basic Info */}
-          {step === 1 && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-600">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  required
-                  value={form.name}
-                  onChange={handleChange}
-                  className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:outline-none transition"
-                  placeholder="John Doe"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-600">
-                  Age
-                </label>
-                <input
-                  type="number"
-                  name="age"
-                  min="13"
-                  required
-                  value={form.age}
-                  onChange={handleChange}
-                  className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:outline-none transition"
-                  placeholder="18"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-600">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  required
-                  value={form.email}
-                  onChange={handleChange}
-                  className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:outline-none transition"
-                  placeholder="example@mail.com"
-                />
-              </div>
-            </>
-          )}
-
-          {/* Step 2: Company */}
-          {step === 2 && (
-            <div>
-              <label className="block text-sm font-medium text-gray-600">
-                Company Name (optional)
-              </label>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Email */}
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
               <input
-                type="text"
-                name="company"
-                value={form.company}
-                onChange={handleChange}
-                className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:outline-none transition"
-                placeholder="My Company LLC"
+                type="email"
+                value={email}
+                required
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email"
+                className="w-full bg-neutral-900 text-white pl-10 pr-4 py-3 rounded-lg border border-neutral-700 focus:ring-2 focus:ring-[#4502fa] placeholder-gray-500 outline-none"
               />
             </div>
-          )}
 
-          {/* Step 3: Passwords */}
-          {step === 3 && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-600">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  name="password"
-                  required
-                  value={form.password}
-                  onChange={handleChange}
-                  className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:outline-none transition"
-                  placeholder="Enter password"
-                  autoComplete="new-password"
-                />
-                {form.password && (
-                  <p
-                    className={`mt-1 text-sm font-semibold ${
-                      passwordStrengthLevel === "Weak"
-                        ? "text-red-600"
-                        : passwordStrengthLevel === "Medium"
-                        ? "text-yellow-600"
-                        : "text-green-600"
-                    }`}
-                  >
-                    Password strength: {passwordStrengthLevel}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600">
-                  Confirm Password
-                </label>
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  required
-                  value={form.confirmPassword}
-                  onChange={handleChange}
-                  className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:outline-none transition"
-                  placeholder="Confirm password"
-                  autoComplete="new-password"
-                />
-              </div>
-            </>
+            {/* Company Name */}
+            <div className="relative">
+              <input
+                type="text"
+                value={companyName}
+                required
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="Company Name"
+                className="w-full bg-neutral-900 text-white px-4 py-3 rounded-lg border border-neutral-700 focus:ring-2 focus:ring-[#4502fa] placeholder-gray-500 outline-none"
+              />
+            </div>
 
-            
-          )}
-
-          {/* Error message */}
-          {error && <p className="text-red-500 text-sm">{error}</p>}
-
-          {/* Buttons */}
-          <div className="flex justify-between mt-4">
-            {step > 1 && (
+            {/* Password */}
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                required
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                className="w-full bg-neutral-900 text-white pl-10 pr-12 py-3 rounded-lg border border-neutral-700 focus:ring-2 focus:ring-[#4502fa] placeholder-gray-500 outline-none"
+              />
               <button
                 type="button"
-                onClick={prevStep}
-                className="px-6 py-2 rounded-lg border border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white transition"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
               >
-                Back
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
+            </div>
+
+            {/* Password Strength */}
+            {password && (
+              <p className={`text-sm font-medium ${passStrength.color}`}>
+                Password Strength: {passStrength.label}
+              </p>
             )}
 
-            {step < 3 && (
+            {/* Confirm Password */}
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                value={confirmPassword}
+                required
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm Password"
+                className="w-full bg-neutral-900 text-white pl-10 pr-12 py-3 rounded-lg border border-neutral-700 focus:ring-2 focus:ring-[#4502fa] placeholder-gray-500 outline-none"
+              />
               <button
                 type="button"
-                onClick={nextStep}
-                className="ml-auto px-6 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
               >
-                Next
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div className="bg-red-800/20 text-red-400 text-sm p-3 rounded-md border border-red-700">
+                {error}
+              </div>
             )}
 
-            {step === 3 && (
-              <button
-                type="submit"
-                disabled={loading}
-                className="ml-auto px-6 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {loading ? "Registering..." : "Register"}
-              </button>
-            )}
-          </div>
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-[#4502fa] hover:bg-[#3601d4] text-white py-3 rounded-lg font-semibold shadow-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
+            >
+              {isLoading ? (
+                "Signing up..."
+              ) : (
+                <div className="flex items-center justify-center gap-2">
+                  <span>Register</span> <ArrowRight size={18} />
+                </div>
+              )}
+            </button>
+          </form>
 
-        </form>
-
-        <div className="text-center mt-6">
-          <p className="text-sm text-gray-600">
-            Already a user?{" "}
-            <Link to="/login" className="text-purple-600 hover:underline font-semibold">
-              Login
+          <div className="mt-6 text-center text-sm text-gray-400">
+            Already have an account?{" "}
+            <Link to="/login" className="text-[#4502fa] hover:underline font-medium">
+              Login here
             </Link>
-          </p>
+          </div>
         </div>
-        
-      </motion.div>
+      </div>
+
+      {/* Right - Branding */}
+      <div className="hidden md:flex w-1/2 items-center justify-center relative overflow-hidden">
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `radial-gradient(ellipse at 85% 30%, rgba(0, 85, 255, 0.7), rgba(0, 0, 0, 0) 60%), #000`,
+          }}
+        />
+        <div className="relative z-10 text-center px-10">
+          <h1 className="text-white text-4xl font-extrabold mb-4">
+            Join <br />
+            <span className="text-white bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+              The Best Social Media Management Platform
+            </span>
+          </h1>
+          <p className="text-gray-300">
+            Empowering connections with seamless experiences.
+            <br />
+            Start your journey with us.
+          </p>
+
+          <div className="mt-8">
+            <div className="w-40 h-40 mx-auto flex items-center justify-center">
+              <div className="relative">
+                <div
+                  className="w-32 h-32 rounded-full border-4 border-white/20 flex items-center justify-center animate-pulse"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05))",
+                    backdropFilter: "blur(10px)",
+                  }}
+                >
+                  <div className="text-white text-2xl font-bold">Logo</div>
+                </div>
+                <div className="absolute -top-2 -right-2 w-6 h-6 bg-white/20 rounded-full animate-bounce" />
+                <div
+                  className="absolute -bottom-3 -left-3 w-4 h-4 bg-white/30 rounded-full animate-bounce"
+                  style={{ animationDelay: "1s" }}
+                />
+                <div
+                  className="absolute top-1/2 -right-4 w-3 h-3 bg-white/25 rounded-full animate-bounce"
+                  style={{ animationDelay: "0.5s" }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
