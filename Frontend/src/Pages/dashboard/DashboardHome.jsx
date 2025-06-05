@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Menu,LogOut, Home,Users,UserCheck,Calendar,Plus,Edit3,Save,X,Sun,Moon,Settings,BarChart3,FileText} from "lucide-react";
-import SocialMediaScheduler from "./Calendar";
+import { Menu, LogOut, Home, Users, UserCheck, Calendar, Plus, Edit3, Save, X, Sun, Moon, Settings, BarChart3, FileText } from "lucide-react";
+
 const navItems = [
   { id: "overview", name: "Overview", icon: Home },
   { id: "clients", name: "Clients", icon: Users },
@@ -12,7 +12,6 @@ const navItems = [
 
 const Dashboard = () => {
   const [activeSection, setActiveSection] = useState("overview");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectedClient, setSelectedClient] = useState(null);
   const [showAddClientModal, setShowAddClientModal] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -144,110 +143,96 @@ const Dashboard = () => {
 
   return (
     <div 
-      className={`flex h-screen ${themeClasses.bg} ${themeClasses.text} transition-all duration-300`}
+      className={`flex flex-col h-screen ${themeClasses.bg} ${themeClasses.text} transition-all duration-300`}
       style={{ fontFamily: 'Montserrat, sans-serif' }}
     >
-      {/* Sidebar */}
-      <aside
-        className={`${themeClasses.cardBg} ${themeClasses.border} border-r h-full flex flex-col transition-all duration-300 ease-in-out
-        ${sidebarOpen ? "w-64" : "w-16"}`}
-      >
-        {/* Header */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+      {/* Top Navigation */}
+      <header className={`${themeClasses.cardBg} ${themeClasses.border} border-b`}>
+        <div className="px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className={`flex items-center ${!sidebarOpen && 'justify-center'}`}>
-              {sidebarOpen && (
-                <h1 className="text-lg font-bold text-blue-600">
-                  SocialDash
-                </h1>
-              )}
+            {/* Logo */}
+            <div className="flex items-center">
+              <h1 className="text-xl font-bold text-blue-600">SocialDash</h1>
             </div>
-            <button
-              className={`p-2 rounded-lg ${themeClasses.hover} transition-colors`}
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-            >
-              <Menu className="h-4 w-4" />
-            </button>
+
+            {/* Navigation Items */}
+            <nav className="hidden md:flex items-center space-x-1">
+              {navItems.map(({ id, name, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setActiveSection(id)}
+                  className={`flex items-center px-4 py-2 rounded-lg transition-all duration-200 font-medium
+                  ${activeSection === id 
+                    ? "bg-blue-50 text-blue-700 border border-blue-200" 
+                    : `${themeClasses.hover} ${themeClasses.textSecondary}`
+                  }`}
+                >
+                  <Icon className="h-4 w-4 mr-2" />
+                  {name}
+                </button>
+              ))}
+            </nav>
+
+            {/* Right Section */}
+            <div className="flex items-center space-x-2">
+              {/* Theme Toggle */}
+              <button
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className={`p-2 rounded-lg ${themeClasses.hover} transition-colors`}
+              >
+                {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              </button>
+              
+              {/* Logout Button */}
+              <button
+                onClick={handleLogout}
+                className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+              >
+                <LogOut className="h-5 w-5" />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 p-4">
-          <div className="space-y-1">
+        {/* Mobile Navigation */}
+        <div className="md:hidden px-6 pb-4">
+          <div className="flex space-x-1 overflow-x-auto">
             {navItems.map(({ id, name, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setActiveSection(id)}
-                className={`w-full flex items-center p-3 rounded-lg transition-all duration-200 group text-left
+                className={`flex items-center px-3 py-2 rounded-lg transition-all duration-200 font-medium whitespace-nowrap
                 ${activeSection === id 
                   ? "bg-blue-50 text-blue-700 border border-blue-200" 
                   : `${themeClasses.hover} ${themeClasses.textSecondary}`
                 }`}
               >
-                <Icon className="h-5 w-5 flex-shrink-0" />
-                {sidebarOpen && (
-                  <span className="ml-3 font-medium">{name}</span>
-                )}
-                {!sidebarOpen && (
-                  <div className="absolute left-20 bg-gray-900 text-white px-2 py-1 rounded text-sm opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                    {name}
-                  </div>
-                )}
+                <Icon className="h-4 w-4 mr-2" />
+                {name}
               </button>
             ))}
           </div>
-        </nav>
-
-        {/* Bottom Section */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
-          {/* Theme Toggle */}
-          <button
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            className={`w-full flex items-center p-3 rounded-lg ${themeClasses.hover} transition-colors`}
-          >
-            {isDarkMode ? <Sun className="h-5 w-5 flex-shrink-0" /> : <Moon className="h-5 w-5 flex-shrink-0" />}
-            {sidebarOpen && (
-              <span className="ml-3 font-medium">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
-            )}
-          </button>
-          
-          {/* Logout Button */}
-          <button
-            onClick={handleLogout}
-            className={`w-full flex items-center p-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors`}
-          >
-            <LogOut className="h-5 w-5 flex-shrink-0" />
-            {sidebarOpen && <span className="ml-3 font-medium">Logout</span>}
-          </button>
         </div>
-      </aside>
+      </header>
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
-        {/* Header */}
-        <header className={`${themeClasses.cardBg} ${themeClasses.border} border-b px-6 py-4`}>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">
-                {navItems.find(item => item.id === activeSection)?.name || 'Dashboard'}
-              </h1>
-              <p className={themeClasses.textSecondary}>
-                {activeSection === 'overview' && 'Welcome back! Here\'s what\'s happening today.'}
-                {activeSection === 'clients' && 'Manage your client accounts and relationships.'}
-                {activeSection === 'employees' && 'Team management and assignments.'}
-                {activeSection === 'content' && 'Create and schedule your content.'}
-                {activeSection === 'analytics' && 'Track your performance and insights.'}
-                {activeSection === 'calendar' && 'View your content calendar and schedule.'}
-              </p>
-            </div>
-            <button
-              onClick={() => setShowAddClientModal(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center font-medium transition-colors"
-            >
-              <Plus className="h-4 w-4 mr-2" /> Add Client
-            </button>
+        {/* Content Header */}
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div>
+            <h1 className="text-2xl font-bold">
+              {navItems.find(item => item.id === activeSection)?.name || 'Dashboard'}
+            </h1>
+            <p className={themeClasses.textSecondary}>
+              {activeSection === 'overview' && 'Welcome back! Here\'s what\'s happening today.'}
+              {activeSection === 'clients' && 'Manage your client accounts and relationships.'}
+              {activeSection === 'employees' && 'Team management and assignments.'}
+              {activeSection === 'content' && 'Create and schedule your content.'}
+              {activeSection === 'analytics' && 'Track your performance and insights.'}
+              {activeSection === 'calendar' && 'View your content calendar and schedule.'}
+            </p>
           </div>
-        </header>
+        </div>
 
         {/* Content */}
         <div className="p-6">
@@ -544,91 +529,99 @@ const Dashboard = () => {
             </div>
           )}
         </div>
+      </main>
 
-        {/* Add Client Modal */}
-        {showAddClientModal && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50 p-4">
-            <div className={`${themeClasses.cardBg} rounded-xl w-full max-w-md shadow-xl`}>
-              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold">Add New Client</h3>
-                  <button
-                    onClick={() => setShowAddClientModal(false)}
-                    className={`p-2 rounded-lg ${themeClasses.hover} transition-colors`}
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-              </div>
-              
-              <div className="p-6 space-y-4">
-                <input
-                  name="name"
-                  onChange={handleClientInputChange}
-                  value={newClient.name}
-                  placeholder="Client Name"
-                  className={`w-full p-3 ${themeClasses.input} border rounded-lg ${themeClasses.text} focus:border-blue-500 focus:outline-none`}
-                />
-                <input
-                  name="company"
-                  onChange={handleClientInputChange}
-                  value={newClient.company}
-                  placeholder="Company Name"
-                  className={`w-full p-3 ${themeClasses.input} border rounded-lg ${themeClasses.text} focus:border-blue-500 focus:outline-none`}
-                />
-                <input
-                  name="occupation"
-                  onChange={handleClientInputChange}
-                  value={newClient.occupation}
-                  placeholder="Industry"
-                  className={`w-full p-3 ${themeClasses.input} border rounded-lg ${themeClasses.text} focus:border-blue-500 focus:outline-none`}
-                />
-                <input
-                  name="platforms"
-                  onChange={handleClientInputChange}
-                  value={newClient.platforms}
-                  placeholder="Platforms (comma separated)"
-                  className={`w-full p-3 ${themeClasses.input} border rounded-lg ${themeClasses.text} focus:border-blue-500 focus:outline-none`}
-                />
-                
-                <div>
-                  <label className={`block ${themeClasses.textSecondary} text-sm font-medium mb-2`}>Links</label>
-                  {newClient.links.map((link, i) => (
-                    <input
-                      key={i}
-                      value={link}
-                      onChange={(e) => handleLinkChange(i, e.target.value)}
-                      placeholder="Link URL"
-                      className={`w-full mb-2 p-3 ${themeClasses.input} border rounded-lg ${themeClasses.text} focus:border-blue-500 focus:outline-none`}
-                    />
-                  ))}
-                  <button 
-                    onClick={addNewLinkField} 
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
-                  >
-                    + Add Link
-                  </button>
-                </div>
-              </div>
-              
-              <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+      {/* Floating Add Client Button */}
+      <button
+        onClick={() => setShowAddClientModal(true)}
+        className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 z-40"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
+
+      {/* Add Client Modal */}
+      {showAddClientModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50 p-4">
+          <div className={`${themeClasses.cardBg} rounded-xl w-full max-w-md shadow-xl`}>
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold">Add New Client</h3>
                 <button
                   onClick={() => setShowAddClientModal(false)}
-                  className={`px-4 py-2 ${themeClasses.hover} rounded-lg transition-colors`}
+                  className={`p-2 rounded-lg ${themeClasses.hover} transition-colors`}
                 >
-                  Cancel
-                </button>
-                <button
-                  onClick={submitNewClient}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                >
-                  Add Client
+                  <X className="h-5 w-5" />
                 </button>
               </div>
             </div>
+            
+            <div className="p-6 space-y-4">
+              <input
+                name="name"
+                onChange={handleClientInputChange}
+                value={newClient.name}
+                placeholder="Client Name"
+                className={`w-full p-3 ${themeClasses.input} border rounded-lg ${themeClasses.text} focus:border-blue-500 focus:outline-none`}
+              />
+              <input
+                name="company"
+                onChange={handleClientInputChange}
+                value={newClient.company}
+                placeholder="Company Name"
+                className={`w-full p-3 ${themeClasses.input} border rounded-lg ${themeClasses.text} focus:border-blue-500 focus:outline-none`}
+              />
+              <input
+                name="occupation"
+                onChange={handleClientInputChange}
+                value={newClient.occupation}
+                placeholder="Industry"
+                className={`w-full p-3 ${themeClasses.input} border rounded-lg ${themeClasses.text} focus:border-blue-500 focus:outline-none`}
+              />
+              <input
+                name="platforms"
+                onChange={handleClientInputChange}
+                value={newClient.platforms}
+                placeholder="Platforms (comma separated)"
+                className={`w-full p-3 ${themeClasses.input} border rounded-lg ${themeClasses.text} focus:border-blue-500 focus:outline-none`}
+              />
+              
+              <div>
+                <label className={`block ${themeClasses.textSecondary} text-sm font-medium mb-2`}>Links</label>
+                {newClient.links.map((link, i) => (
+                  <input
+                    key={i}
+                    value={link}
+                    onChange={(e) => handleLinkChange(i, e.target.value)}
+                    placeholder="Link URL"
+                    className={`w-full mb-2 p-3 ${themeClasses.input} border rounded-lg ${themeClasses.text} focus:border-blue-500 focus:outline-none`}
+                  />
+                ))}
+                <button 
+                  onClick={addNewLinkField} 
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
+                >
+                  + Add Link
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+              <button
+                onClick={() => setShowAddClientModal(false)}
+                className={`px-4 py-2 ${themeClasses.hover} rounded-lg transition-colors`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitNewClient}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              >
+                Add Client
+              </button>
+            </div>
           </div>
-        )}
-      </main>
+        </div>
+      )}
     </div>
   );
 };
