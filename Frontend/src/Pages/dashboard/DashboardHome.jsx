@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Menu, LogOut, Home, Users, UserCheck, Calendar, Plus, Edit3, Save, X, Sun, Moon, Settings, BarChart3, FileText } from "lucide-react";
+import { LogOut, Home, Users, UserCheck, Calendar, Plus, Edit3, Save, X, Sun, Moon, BarChart3, FileText } from "lucide-react";
 import SocialMediaScheduler from "./Calendar"; 
 
 const navItems = [
@@ -15,8 +15,6 @@ const Dashboard = () => {
   const [selectedClient, setSelectedClient] = useState(null);
   const [showAddClientModal, setShowAddClientModal] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
-  const [isClientSidebarVisible, setIsClientSidebarVisible] = useState(false);
-  const hamburgerRef = useRef(null);
   const sidebarRef = useRef(null);
   
   const [clients, setClients] = useState([
@@ -74,36 +72,11 @@ const Dashboard = () => {
     input: isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300',
   };
 
-  // Toggle client sidebar
-  const toggleClientSidebar = () => {
-    setIsClientSidebarVisible(!isClientSidebarVisible);
-  };
-
   // Handle client selection from sidebar
   const handleClientSelect = (client) => {
     setSelectedClient(client);
     setActiveSection("overview"); // Go to overview section when client is selected
-    setIsClientSidebarVisible(false); // Close sidebar after selection on mobile/small screens
   };
-
-  // Close sidebar when clicking outside on mobile/small screens
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        isClientSidebarVisible && 
-        sidebarRef.current && 
-        hamburgerRef.current &&
-        !sidebarRef.current.contains(event.target) &&
-        !hamburgerRef.current.contains(event.target) &&
-        window.innerWidth < 768 // Only on mobile screens
-      ) {
-        setIsClientSidebarVisible(false);
-      }
-    };
-    
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isClientSidebarVisible]);
 
   const handleLogout = () => {
     console.log("Logging out...");
@@ -176,24 +149,6 @@ const Dashboard = () => {
     setIsEditing(false);
   };
 
-  // Update the click outside handler to be more precise
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        isClientSidebarVisible && 
-        sidebarRef.current && 
-        hamburgerRef.current &&
-        !sidebarRef.current.contains(event.target) &&
-        !hamburgerRef.current.contains(event.target)
-      ) {
-        setIsClientSidebarVisible(false);
-      }
-    };
-    
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isClientSidebarVisible]);
-
   // Handle section change with proper state reset
   const handleSectionChange = (sectionId) => {
     setActiveSection(sectionId);
@@ -212,16 +167,8 @@ const Dashboard = () => {
       <header className={`${themeClasses.cardBg} ${themeClasses.border} border-b z-10 relative`}>
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
-            {/* Logo with Hamburger */}
-            <div className="flex items-center space-x-3">
-              <button 
-                ref={hamburgerRef}
-                className={`p-2 rounded-lg ${themeClasses.hover} transition-colors`}
-                onClick={toggleClientSidebar}
-                aria-label="Toggle clients sidebar"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
+            {/* Logo - hamburger removed */}
+            <div className="flex items-center">
               <h1 className="text-xl font-bold text-blue-600">SocialDash</h1>
             </div>
 
@@ -284,23 +231,13 @@ const Dashboard = () => {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Client Sidebar - Full height */}
+        {/* Client Sidebar - Always visible */}
         <div 
           ref={sidebarRef}
-          className={`fixed md:static inset-0 z-30 md:z-auto transform ${
-            isClientSidebarVisible ? 'translate-x-0' : '-translate-x-full'
-          } md:translate-x-0 transition-transform duration-300 ease-in-out ${themeClasses.border} ${themeClasses.cardBg} md:border-r w-64 md:${
-            isClientSidebarVisible ? 'block' : 'hidden'
-          } md:block flex flex-col`}
+          className={`hidden md:flex md:static z-30 md:z-auto ${themeClasses.border} ${themeClasses.cardBg} border-r w-64 flex-col`}
         >
           <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
             <h3 className="font-medium text-lg">Clients</h3>
-            <button 
-              onClick={toggleClientSidebar}
-              className={`md:hidden p-2 rounded-lg ${themeClasses.hover}`}
-            >
-              <X className="h-5 w-5" />
-            </button>
           </div>
           <div className="overflow-y-auto flex-grow">
             {clients.map(client => (
@@ -336,10 +273,7 @@ const Dashboard = () => {
           </div>
           <div className="p-4 border-t border-gray-200 dark:border-gray-700">
             <button
-              onClick={() => {
-                setShowAddClientModal(true);
-                setIsClientSidebarVisible(false);
-              }}
+              onClick={() => setShowAddClientModal(true)}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg flex items-center justify-center"
             >
               <Plus className="h-4 w-4 mr-1" />
@@ -347,14 +281,6 @@ const Dashboard = () => {
             </button>
           </div>
         </div>
-
-        {/* Backdrop for mobile */}
-        {isClientSidebarVisible && (
-          <div 
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-20 md:hidden"
-            onClick={() => setIsClientSidebarVisible(false)} 
-          />
-        )}
 
         {/* Main Content */}
         <main className="flex-1 overflow-auto">
@@ -626,7 +552,6 @@ const Dashboard = () => {
           </div>
         </main>
       </div>
-
 
       {/* Add Client Modal - unchanged */}
       {showAddClientModal && (
