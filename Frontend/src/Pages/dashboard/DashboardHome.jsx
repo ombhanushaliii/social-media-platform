@@ -1,22 +1,6 @@
 import { useState } from "react";
-import { 
-  Menu, 
-  LogOut, 
-  Home, 
-  Users, 
-  UserCheck, 
-  Calendar, 
-  Plus,
-  Edit3,
-  Save,
-  X,
-  Sun,
-  Moon,
-  Settings,
-  BarChart3,
-  FileText
-} from "lucide-react";
-
+import { Menu,LogOut, Home,Users,UserCheck,Calendar,Plus,Edit3,Save,X,Sun,Moon,Settings,BarChart3,FileText} from "lucide-react";
+import SocialMediaScheduler from "./Calendar";
 const navItems = [
   { id: "overview", name: "Overview", icon: Home },
   { id: "clients", name: "Clients", icon: Users },
