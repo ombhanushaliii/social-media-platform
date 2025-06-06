@@ -1,16 +1,18 @@
 const { admin, db } = require("../config/firebase");
 const jwt = require("jsonwebtoken");
 
+const axios = require("axios");
+
 const COOKIE_NAME ="cookie" ||  process.env.COOKIE_NAME;
 const JWT_SECRET ="jwt_secret" || process.env.JWT_SECRET;
 
 
 const signup = async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { name, email, password } = req.body;
 
     // basic validation
-    if (!username?.trim() || !email?.trim() || !password) {
+    if (!name?.trim() || !email?.trim() || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -41,14 +43,14 @@ const signup = async (req, res) => {
     const userRecord = await admin.auth().createUser({
       email,
       password,
-      displayName: username,
+      displayName: name,
     });
 
     // save user in firestore
     await db.collection("users").doc(userRecord.uid).set({
       uid: userRecord.uid,
       email,
-      username,
+      name,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
@@ -65,7 +67,7 @@ const signup = async (req, res) => {
 
     res.status(201).json({
       message: "Signup successful",
-      user: { uid: userRecord.uid, email, username },
+      user: { uid: userRecord.uid, email, name,token },
     });
 
   } catch (error) {
@@ -82,42 +84,40 @@ const signup = async (req, res) => {
   }
 };
 
-// const login = async (req, res) => {
-//     try {
 
-//     } catch (error) {
-//         console.error("Error during login:", error);
-//         res.status(500).json({ message: "Internal server error" });
-//     }
-// }
+
+
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // basic validation
     if (!email?.trim() || !password) {
       return res.status(400).json({ message: "Email and password are required" });
     }
 
-    // check user in firestore
-    const userSnap = await db.collection("users")
-      .where("email", "==", email)
-      .limit(1)
-      .get();
+    // Firebase Auth REST API Login
+    const response = await axios.post(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${process.env.FIREBASE_API_KEY}`,
+      {
+        email,
+        password,
+        returnSecureToken: true,
+      }
+    );
 
-    if (userSnap.empty) {
-      return res.status(404).json({ message: "User not found" });
+    const { idToken, localId } = response.data;
+
+    // fetch user data from Firestore
+    const userDoc = await db.collection("users").doc(localId).get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ message: "User data not found" });
     }
 
-    const user = userSnap.docs[0].data();
+    const user = userDoc.data();
 
-    // match password 
-    if (user.password !== password) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    // generate jwt
-    const token = jwt.sign({ uid: user.uid }, JWT_SECRET, { expiresIn: "7d" });
+    // generate jwt token for your own session (optional)
+    const token = jwt.sign({ uid: localId }, JWT_SECRET, { expiresIn: "7d" });
 
     // set cookie
     res.cookie(COOKIE_NAME, token, {
@@ -129,14 +129,18 @@ const login = async (req, res) => {
 
     res.status(200).json({
       message: "Login successful",
-      user: { uid: user.uid, email: user.email, username: user.username },
+      user: { uid: user.uid, email: user.email, name: user.name,token },
     });
 
   } catch (error) {
-    console.error("Login error:", error);
-    res.status(500).json({ message: "Something went wrong", error: error.message });
+    console.error("Login error:", error.response?.data || error.message);
+    res.status(401).json({
+      message: "Login failed",
+      error: error.response?.data?.error?.message || error.message,
+    });
   }
 };
+
 
 module.exports = {   
     signup,
