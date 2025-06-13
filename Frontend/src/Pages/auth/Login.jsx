@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
-import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
-import { auth, provider } from "../../Config/Firebase";
 import { useAuth } from "../../Context/AuthContext";
 import logo from "../../assets/logo.png";
 
@@ -21,28 +19,19 @@ const Login = () => {
     setError("");
 
     try {
-      const result = await signInWithEmailAndPassword(auth, email, password);
-      const user = result.user;
-      login({ email: user.email, name: user.displayName || "" }, "email-password");
-      navigate("/dashboard");
+      // Hardcoded credentials
+      if (email === "user@whizmedia.com" && password === "user@123") {
+        const userData = {
+          email: "user@whizmedia.com",
+          name: "Whizmedia User"
+        };
+        login(userData, "hardcoded-token");
+        navigate("/dashboard");
+      } else {
+        setError("Invalid email or password. Use user@whizmedia.com and user@123");
+      }
     } catch (err) {
-      setError(err.message || "Login failed.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    setIsLoading(true);
-    setError("");
-
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      login({ email: user.email, name: user.displayName }, "google");
-      navigate("/dashboard");
-    } catch (err) {
-      setError("Google Sign-In failed.");
+      setError("Login failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -117,27 +106,6 @@ const Login = () => {
                   <span>Login</span> <ArrowRight size={18} />
                 </div>
               )}
-            </button>
-
-            {/* OR Divider */}
-            <div className="flex items-center my-4">
-              <div className="flex-grow h-px bg-neutral-600"></div>
-              <span className="px-2 text-sm text-gray-400">OR</span>
-              <div className="flex-grow h-px bg-neutral-600"></div>
-            </div>
-
-            {/* Google Login */}
-            <button
-              type="button"
-              onClick={handleGoogleLogin}
-              className="w-80 flex items-center justify-center gap-2 border border-neutral-700 bg-neutral-800 text-white py-3 rounded-lg font-semibold hover:bg-neutral-700 transition duration-200"
-            >
-              <img
-                src="https://www.svgrepo.com/show/475656/google-color.svg"
-                alt="Google"
-                className="w-5 h-5"
-              />
-              Login with Google
             </button>
           </form>
 

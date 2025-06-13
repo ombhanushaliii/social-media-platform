@@ -13,10 +13,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// ✅ Define and export auth and provider
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
-
-export { auth, provider };
+// Firebase removed - using hardcoded authentication
+export const auth = null;
+export const provider = null;
 
 
