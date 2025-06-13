@@ -46,12 +46,21 @@ const PostCreator = ({ isDarkMode, onClose, onPostSuccess }) => {
       formData.append('image', selectedFile);
       formData.append('caption', caption);
 
+      console.log('Posting to backend...'); // Debug log
+
       const response = await fetch('https://whizmedia-backend.onrender.com/user/post', {
         method: 'POST',
         body: formData,
       });
 
+      console.log('Response status:', response.status); // Debug log
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
+      console.log('Response data:', data); // Debug log
 
       if (data.success) {
         onPostSuccess && onPostSuccess(data);
@@ -64,8 +73,8 @@ const PostCreator = ({ isDarkMode, onClose, onPostSuccess }) => {
         setError(data.error || "Failed to post");
       }
     } catch (err) {
-      setError("Network error. Please try again.");
       console.error('Post error:', err);
+      setError(`Network error: ${err.message}. Please try again.`);
     } finally {
       setIsPosting(false);
     }
