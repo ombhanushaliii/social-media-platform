@@ -46,7 +46,7 @@ const PostCreator = ({ isDarkMode, onClose, onPostSuccess }) => {
       formData.append('image', selectedFile);
       formData.append('caption', caption);
 
-      const response = await fetch('http://localhost:5000/user/post', {
+      const response = await fetch('https://whizmedia-backend.onrender.com/user/post', {
         method: 'POST',
         body: formData,
       });
