@@ -1,6 +1,6 @@
 const { admin, db } = require("../config/firebase");
 const jwt = require("jsonwebtoken");
-const cloudinary = require("cloudinary").v2;
+const cloudinary = require("cloudinary").v2;git 
 
 const axios = require("axios");
 
@@ -171,7 +171,7 @@ const post=async(req,res)=>{
         access_token: process.env.INSTAGRAM_ACCESS_TOKEN
       }
     );
-
+ //send the response back to the client
     res.json({ 
       success: true,
       instagramPostId: publishResponse.data.id,
