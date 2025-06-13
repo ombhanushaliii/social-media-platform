@@ -15,23 +15,3 @@ export const loginUser = async (email, password) => {
   throw new Error("Invalid email or password");
 };
 
-export const registerUser = async ({ name, age, email, company, password }) => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      if (existingUsers.includes(email)) {
-        reject(new Error("Email already registered"));
-      } else {
-        const newUser = {
-          id: `user_${Date.now()}`,
-          name,
-          age,
-          email,
-          company,
-        };
-        const dummyToken = "dummy-jwt-token";
-        existingUsers.push(email);
-        resolve({ user: newUser, token: dummyToken });
-      }
-    }, 1000);
-  });
-};

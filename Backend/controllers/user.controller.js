@@ -1,11 +1,5 @@
-const { admin, db } = require("../config/firebase");
-const jwt = require("jsonwebtoken");
-const cloudinary = require("cloudinary").v2;git 
-
 const axios = require("axios");
-
-const COOKIE_NAME ="cookie" ||  process.env.COOKIE_NAME;
-const JWT_SECRET ="jwt_secret" || process.env.JWT_SECRET;
+const cloudinary = require("cloudinary").v2;
 
 
 // const signup = async (req, res) => {
@@ -142,16 +136,29 @@ const JWT_SECRET ="jwt_secret" || process.env.JWT_SECRET;
 //   }
 // };
 
-const post=async(req,res)=>{
+const post = async (req, res) => {
   try {
-    if (!req.file) throw new Error('No image provided');
+    if (!req.file) {
+      return res.status(400).json({ 
+        error: 'No image provided',
+        message: 'Please upload an image file'
+      });
+    }
 
-    // Upload to Cloudinary
-    const cloudinaryResult = await cloudinary.uploader.upload(req.file.path, {
-      transformation: [
-        { width: 1080, height: 1080, crop: 'fill' },
-        { quality: 'auto:good' }
-      ]
+    // Upload to Cloudinary using buffer
+    const cloudinaryResult = await new Promise((resolve, reject) => {
+      cloudinary.uploader.upload_stream(
+        {
+          transformation: [
+            { width: 1080, height: 1080, crop: 'fill' },
+            { quality: 'auto:good' }
+          ]
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      ).end(req.file.buffer);
     });
 
     // Post to Instagram
@@ -171,22 +178,21 @@ const post=async(req,res)=>{
         access_token: process.env.INSTAGRAM_ACCESS_TOKEN
       }
     );
- //send the response back to the client
+
     res.json({ 
       success: true,
       instagramPostId: publishResponse.data.id,
-      imageUrl: cloudinaryResult.secure_url
+      imageUrl: cloudinaryResult.secure_url,
+      message: 'Post published successfully to Instagram'
     });
+
   } catch (err) {
     console.error('Posting error:', err.response?.data || err.message);
     res.status(500).json({ 
       error: 'Failed to post to Instagram',
       details: err.response?.data || err.message
     });
+  }
 };
 
-
-}
-module.exports = {   
-   post
-};
+module.exports = { post };

@@ -1,6 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Login from "./Pages/auth/Login";
-import Register from "./Pages/auth/Register";  // Import Register component
 import Dashboard from "./Pages/dashboard/DashboardHome"; // placeholder
 import ProtectedRoute from "./Components/ProtectedRoute";
 
@@ -10,7 +9,7 @@ const App = () => {
       <Routes>
         <Route path="/login" element={<Login />} />
 
-        <Route path="/register" element={<Register />} />  {/* Add this */}
+
 
         <Route
           path="/dashboard"

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../Context/AuthContext";
 import logo from "../../assets/logo.png";
 
@@ -83,12 +83,6 @@ const Login = () => {
               </button>
             </div>
 
-            <div className="text-right">
-              <Link to="/forgot-password" className="text-sm text-[#4502fa] hover:underline">
-                Forgot Password?
-              </Link>
-            </div>
-
             {error && (
               <div className="bg-red-800/20 text-red-400 text-sm p-3 rounded-md border border-red-700">
                 {error}
@@ -108,11 +102,6 @@ const Login = () => {
               )}
             </button>
           </form>
-
-          {/* Register */}
-          <div className="mt-6 text-center text-sm text-gray-400">
-            Not registered? <Link to="/register" className="text-[#4502fa] hover:underline font-medium">Create an account</Link>
-          </div>
         </div>
       </div>
 
