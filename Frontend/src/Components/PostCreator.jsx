@@ -51,12 +51,19 @@ const PostCreator = ({ isDarkMode, onClose, onPostSuccess }) => {
       const response = await fetch('https://whizmedia-backend.onrender.com/user/post', {
         method: 'POST',
         body: formData,
+        mode: 'cors', // Explicitly set CORS mode
+        headers: {
+          // Don't set Content-Type for FormData, let browser handle it
+        }
       });
 
       console.log('Response status:', response.status); // Debug log
+      console.log('Response headers:', response.headers); // Debug log
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
@@ -74,7 +81,17 @@ const PostCreator = ({ isDarkMode, onClose, onPostSuccess }) => {
       }
     } catch (err) {
       console.error('Post error:', err);
-      setError(`Network error: ${err.message}. Please try again.`);
+      
+      // Better error messages
+      if (err.message.includes('CORS')) {
+        setError("CORS error: Backend not allowing frontend requests. Please check server configuration.");
+      } else if (err.message.includes('NetworkError')) {
+        setError("Network error: Unable to reach backend server. Please check if backend is running.");
+      } else if (err.message.includes('fetch')) {
+        setError("Connection error: Please check your internet connection and try again.");
+      } else {
+        setError(`Error: ${err.message}`);
+      }
     } finally {
       setIsPosting(false);
     }
