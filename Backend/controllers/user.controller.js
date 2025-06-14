@@ -134,7 +134,7 @@ const linkedinCallback = async (req, res) => {
 
     // Redirect to frontend with user data
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    const redirectUrl = `${frontendUrl}/auth/linkedin/callback?token=${sessionToken}&success=true`;
+    const redirectUrl = `${frontendUrl}/dashboard?linkedin_token=${sessionToken}&linkedin_success=true`;
     
     console.log('Redirecting to frontend successfully');
     res.redirect(redirectUrl);

@@ -108,15 +108,32 @@ const Dashboard = () => {
   // Listen for LinkedIn callback (token in URL)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
-    const success = params.get("success");
-    if (success === "true" && token) {
-      const userData = JSON.parse(atob(token));
-      login(userData, token);
-      // Remove token from URL after login
-      window.history.replaceState({}, document.title, window.location.pathname);
+    const linkedinToken = params.get("linkedin_token");
+    const linkedinSuccess = params.get("linkedin_success");
+    
+    if (linkedinSuccess === "true" && linkedinToken) {
+      try {
+        const linkedinUserData = JSON.parse(atob(linkedinToken));
+        
+        // Merge LinkedIn data with existing user data
+        const updatedUser = {
+          ...user, // Keep existing user data
+          ...linkedinUserData, // Add LinkedIn data
+          provider: user?.provider || 'email', // Keep original provider if exists
+          linkedinConnected: true
+        };
+        
+        login(updatedUser, linkedinToken);
+        
+        // Remove token from URL after processing
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        console.log('LinkedIn connected successfully!');
+      } catch (error) {
+        console.error('Error processing LinkedIn token:', error);
+      }
     }
-  }, [login]);
+  }, [login, user]);
 
   return (
     <div 
@@ -574,7 +591,7 @@ const Dashboard = () => {
         />
       )}
 
-      {/* LinkedIn Connect Section */}
+      {/* LinkedIn Connect Section - move this to a better location in your UI */}
       <div className="mb-6">
         {!user?.linkedinAccessToken ? (
           <button
