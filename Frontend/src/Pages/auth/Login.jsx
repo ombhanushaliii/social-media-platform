@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, EyeOff, Mail, Lock, ArrowRight, Linkedin } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../Context/AuthContext";
 import logo from "../../assets/logo.png";
@@ -10,7 +10,6 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [linkedinLoading, setLinkedinLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
 
@@ -38,35 +37,6 @@ const Login = () => {
     }
   };
 
-  const handleLinkedInLogin = () => {
-    setLinkedinLoading(true);
-    setError("");
-
-    try {
-      // LinkedIn OAuth parameters - MUST match exactly what's in backend env
-      const clientId = '776rnhewhggkqz'; // THIS MUST MATCH YOUR BACKEND CLIENT_ID
-      const redirectUri = 'https://whizmedia-backend.onrender.com/user/auth/linkedin/callback';
-      const scope = 'openid profile email';
-      const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      
-      // Store state in localStorage for CSRF protection
-      localStorage.setItem('linkedin_state', state);
-      
-      // Build LinkedIn authorization URL with proper encoding
-      const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}`;
-      
-      console.log('LinkedIn OAuth URL:', linkedinAuthUrl);
-      console.log('Client ID being used:', clientId);
-      
-      // Redirect to LinkedIn
-      window.location.href = linkedinAuthUrl;
-    } catch (err) {
-      console.error('LinkedIn login error:', err);
-      setError('Failed to initialize LinkedIn login');
-      setLinkedinLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen flex" style={{ fontFamily: "Montserrat, sans-serif" }}>
       {/* Left Panel */}
@@ -78,26 +48,6 @@ const Login = () => {
 
           <h2 className="text-3xl font-bold text-white mb-2">Welcome Back 👋</h2>
           <p className="text-sm text-gray-400 mb-6">Login to your dashboard</p>
-
-          {/* LinkedIn Login Button */}
-          <button
-            type="button"
-            onClick={handleLinkedInLogin}
-            disabled={linkedinLoading}
-            className="w-80 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 disabled:hover:scale-100 flex items-center justify-center gap-2 mb-4"
-          >
-            {linkedinLoading ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>Connecting to LinkedIn...</span>
-              </>
-            ) : (
-              <>
-                <Linkedin className="w-5 h-5" />
-                <span>Continue with LinkedIn</span>
-              </>
-            )}
-          </button>
 
           {/* Divider */}
           <div className="flex items-center my-6">
