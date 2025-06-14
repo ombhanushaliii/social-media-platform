@@ -43,25 +43,20 @@ const Login = () => {
     setError("");
 
     try {
-      // LinkedIn OAuth parameters - exactly as per documentation
+      // LinkedIn OAuth parameters - EXACTLY matching backend expectations
       const clientId = '8697l9ulxdvqmx';
-      const redirectUri = encodeURIComponent('https://whizmedia-backend.onrender.com/user/auth/linkedin/callback');
-      const scope = encodeURIComponent('openid profile email');
+      const redirectUri = 'https://whizmedia-backend.onrender.com/user/auth/linkedin/callback'; // NO encoding here
+      const scope = 'openid profile email'; // NO encoding here
       const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       
       // Store state in localStorage for CSRF protection
       localStorage.setItem('linkedin_state', state);
       
-      // Build LinkedIn authorization URL exactly as per docs
-      const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}`;
+      // Build LinkedIn authorization URL with proper encoding
+      const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}`;
       
       console.log('LinkedIn OAuth URL:', linkedinAuthUrl);
-      console.log('Parameters:', {
-        client_id: clientId,
-        redirect_uri: decodeURIComponent(redirectUri),
-        scope: decodeURIComponent(scope),
-        state: state
-      });
+      console.log('Redirect URI (unencoded):', redirectUri);
       
       // Redirect to LinkedIn
       window.location.href = linkedinAuthUrl;
