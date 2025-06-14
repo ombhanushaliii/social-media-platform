@@ -20,7 +20,6 @@ const Login = () => {
     setError("");
 
     try {
-      // Hardcoded credentials
       if (email === "user@whizmedia.com" && password === "user@123") {
         const userData = {
           email: "user@whizmedia.com",
@@ -43,19 +42,34 @@ const Login = () => {
     setLinkedinLoading(true);
     setError("");
 
-    // LinkedIn OAuth parameters using your actual credentials from .env
-    const clientId = '8697l9ulxdvqmx'; // Your actual LinkedIn Client ID
-    const redirectUri = encodeURIComponent('https://whizmedia-backend.onrender.com/user/auth/linkedin/callback');
-    const scope = encodeURIComponent('openid profile email');
-    const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    
-    // Store state in localStorage for CSRF protection
-    localStorage.setItem('linkedin_state', state);
-    
-    const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}`;
-    
-    console.log('Redirecting to LinkedIn OAuth:', linkedinAuthUrl);
-    window.location.href = linkedinAuthUrl;
+    try {
+      // LinkedIn OAuth parameters - exactly as per documentation
+      const clientId = '8697l9ulxdvqmx';
+      const redirectUri = encodeURIComponent('https://whizmedia-backend.onrender.com/user/auth/linkedin/callback');
+      const scope = encodeURIComponent('openid profile email');
+      const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      
+      // Store state in localStorage for CSRF protection
+      localStorage.setItem('linkedin_state', state);
+      
+      // Build LinkedIn authorization URL exactly as per docs
+      const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}`;
+      
+      console.log('LinkedIn OAuth URL:', linkedinAuthUrl);
+      console.log('Parameters:', {
+        client_id: clientId,
+        redirect_uri: decodeURIComponent(redirectUri),
+        scope: decodeURIComponent(scope),
+        state: state
+      });
+      
+      // Redirect to LinkedIn
+      window.location.href = linkedinAuthUrl;
+    } catch (err) {
+      console.error('LinkedIn login error:', err);
+      setError('Failed to initialize LinkedIn login');
+      setLinkedinLoading(false);
+    }
   };
 
   return (

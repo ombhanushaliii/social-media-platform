@@ -6,7 +6,7 @@ const linkedinCallback = async (req, res) => {
   try {
     const { code, state, error, error_description } = req.query;
 
-    // Handle OAuth errors
+    // Handle OAuth errors from LinkedIn
     if (error) {
       console.error('LinkedIn OAuth error:', error, error_description);
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -15,41 +15,57 @@ const linkedinCallback = async (req, res) => {
     }
 
     if (!code) {
-      return res.status(400).json({ 
-        error: 'Authorization code not provided',
-        message: 'LinkedIn OAuth callback requires authorization code'
-      });
+      console.error('No authorization code received');
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const errorUrl = `${frontendUrl}/auth/linkedin/callback?error=no_code&message=${encodeURIComponent('Authorization code not provided')}`;
+      return res.redirect(errorUrl);
     }
 
     console.log('LinkedIn callback received code:', code.substring(0, 20) + '...');
+    console.log('State parameter:', state);
 
     // Step 3: Exchange authorization code for access token
+    // Using application/x-www-form-urlencoded as specified in LinkedIn docs
+    const tokenParams = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code: code,
+      client_id: process.env.LINKEDIN_CLIENT_ID,
+      client_secret: process.env.LINKEDIN_CLIENT_SECRET,
+      redirect_uri: process.env.LINKEDIN_REDIRECT_URI
+    });
+
+    console.log('Token request params:', {
+      grant_type: 'authorization_code',
+      client_id: process.env.LINKEDIN_CLIENT_ID,
+      redirect_uri: process.env.LINKEDIN_REDIRECT_URI,
+      code_length: code.length
+    });
+
     const tokenResponse = await axios.post('https://www.linkedin.com/oauth/v2/accessToken', 
-      new URLSearchParams({
-        grant_type: 'authorization_code',
-        code: code,
-        client_id: process.env.LINKEDIN_CLIENT_ID,
-        client_secret: process.env.LINKEDIN_CLIENT_SECRET,
-        redirect_uri: process.env.LINKEDIN_REDIRECT_URI
-      }), {
+      tokenParams.toString(), {
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json'
+        },
+        timeout: 10000 // 10 second timeout
       }
     );
 
     const { access_token, expires_in, refresh_token, scope } = tokenResponse.data;
     console.log('LinkedIn access token received, expires in:', expires_in);
+    console.log('Granted scopes:', scope);
 
-    // Get user profile information using userinfo endpoint
+    // Get user profile information using the userinfo endpoint
     const profileResponse = await axios.get('https://api.linkedin.com/v2/userinfo', {
       headers: {
-        'Authorization': `Bearer ${access_token}`
-      }
+        'Authorization': `Bearer ${access_token}`,
+        'Accept': 'application/json'
+      },
+      timeout: 10000
     });
 
     const userProfile = profileResponse.data;
-    console.log('LinkedIn profile received:', userProfile.email);
+    console.log('LinkedIn profile received for:', userProfile.email);
 
     // Create user data object
     const userData = {
@@ -61,34 +77,44 @@ const linkedinCallback = async (req, res) => {
       picture: userProfile.picture,
       linkedinId: userProfile.sub,
       provider: 'linkedin',
-      accessToken: access_token,
-      refreshToken: refresh_token,
-      expiresIn: expires_in,
-      scope: scope
+      loginTime: new Date().toISOString()
     };
 
-    // Create a simple session token (in production, use proper JWT)
-    const sessionToken = Buffer.from(JSON.stringify({
-      ...userData,
-      // Don't include sensitive tokens in the frontend token
-      accessToken: undefined,
-      refreshToken: undefined
-    })).toString('base64');
+    // Create a session token (excluding sensitive data)
+    const sessionToken = Buffer.from(JSON.stringify(userData)).toString('base64');
 
     // Redirect to frontend with user data
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const redirectUrl = `${frontendUrl}/auth/linkedin/callback?token=${sessionToken}&success=true`;
     
-    console.log('Redirecting to frontend...');
+    console.log('Redirecting to frontend successfully');
     res.redirect(redirectUrl);
 
   } catch (error) {
-    console.error('LinkedIn OAuth error:', error.response?.data || error.message);
+    console.error('LinkedIn OAuth error details:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers
+      }
+    });
     
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    const errorMessage = error.response?.data?.error_description || error.message || 'Authentication failed';
-    const errorUrl = `${frontendUrl}/auth/linkedin/callback?error=oauth_failed&message=${encodeURIComponent(errorMessage)}`;
+    let errorMessage = 'Authentication failed';
     
+    if (error.response?.data) {
+      // LinkedIn API error
+      errorMessage = error.response.data.error_description || error.response.data.error || 'LinkedIn API error';
+    } else if (error.message.includes('timeout')) {
+      errorMessage = 'Request timeout - please try again';
+    } else {
+      errorMessage = error.message;
+    }
+    
+    const errorUrl = `${frontendUrl}/auth/linkedin/callback?error=oauth_failed&message=${encodeURIComponent(errorMessage)}`;
     res.redirect(errorUrl);
   }
 };
