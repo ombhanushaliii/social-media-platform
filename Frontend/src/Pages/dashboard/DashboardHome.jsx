@@ -21,7 +21,7 @@ const Dashboard = () => {
   const [showPlatformDropdown, setShowPlatformDropdown] = useState(false);
   const [posts, setPosts] = useState([]);
   const sidebarRef = useRef(null);
-  const { user } = useAuth();
+  const { user, login } = useAuth();
   
   const [clients, setClients] = useState([
     {
@@ -93,6 +93,30 @@ const Dashboard = () => {
       }
     }
   };
+
+  // LinkedIn connect handler
+  const handleLinkedInConnect = () => {
+    const clientId = '776rnhewhggkqz';
+    const redirectUri = 'https://whizmedia-backend.onrender.com/user/auth/linkedin/callback';
+    const scope = 'openid profile email';
+    const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    localStorage.setItem('linkedin_state', state);
+    const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}`;
+    window.location.href = linkedinAuthUrl;
+  };
+
+  // Listen for LinkedIn callback (token in URL)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    const success = params.get("success");
+    if (success === "true" && token) {
+      const userData = JSON.parse(atob(token));
+      login(userData, token);
+      // Remove token from URL after login
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [login]);
 
   return (
     <div 
@@ -549,6 +573,32 @@ const Dashboard = () => {
           onPostSuccess={handlePostSuccess}
         />
       )}
+
+      {/* LinkedIn Connect Section */}
+      <div className="mb-6">
+        {!user?.linkedinAccessToken ? (
+          <button
+            onClick={handleLinkedInConnect}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-all"
+          >
+            <Linkedin className="w-5 h-5" />
+            Connect LinkedIn
+          </button>
+        ) : (
+          <div className="flex items-center gap-3 bg-blue-50 dark:bg-blue-900 px-4 py-2 rounded-lg">
+            <Linkedin className="w-5 h-5 text-blue-600" />
+            <span className="font-medium text-blue-700 dark:text-blue-300">
+              {user.name || user.firstName || "LinkedIn User"}
+            </span>
+            <button
+              onClick={() => setShowLinkedInCreator(true)}
+              className="ml-4 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition-all"
+            >
+              Post to LinkedIn
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
