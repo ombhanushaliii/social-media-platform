@@ -6,6 +6,12 @@ const linkedinCallback = async (req, res) => {
   try {
     const { code, state, error, error_description } = req.query;
 
+    console.log('---------------------------------------');
+    console.log('🔑 Authorization Code:', `"${code}"`);
+    console.log('🧾 Length:', code?.length);
+    console.log('🧼 Trimmed:', `"${code?.trim()}"`, 'Length:', code?.trim().length);
+    console.log('---------------------------------------');
+
     console.log('LinkedIn callback received:', {
       code: code ? code.substring(0, 10) + '...' : 'missing',
       state: state || 'missing',
