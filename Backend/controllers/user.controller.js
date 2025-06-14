@@ -48,19 +48,14 @@ const linkedinCallback = async (req, res) => {
     }
 
     // Step 3: Exchange authorization code for access token
-    // Use URLSearchParams for proper encoding (this is the fix!)
-    const tokenParams = new URLSearchParams({
-      grant_type: 'authorization_code',
-      code: code,
-      client_id: clientId,
-      client_secret: clientSecret,
-      redirect_uri: redirectUri
-    });
+    // EXACTLY as per LinkedIn documentation
+    const requestBody = `grant_type=authorization_code&code=${code}&client_id=${clientId}&client_secret=${clientSecret}&redirect_uri=${encodeURIComponent(redirectUri)}`;
 
     console.log('Making token request to LinkedIn...');
+    console.log('Request body format:', requestBody.replace(clientSecret, 'HIDDEN'));
 
     const tokenResponse = await axios.post('https://www.linkedin.com/oauth/v2/accessToken', 
-      tokenParams, {
+      requestBody, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'application/json'
@@ -138,8 +133,8 @@ const linkedinCallback = async (req, res) => {
       
       if (errorData.error === 'invalid_client') {
         errorMessage = 'Invalid LinkedIn client credentials.';
-      } else if (errorData.error === 'invalid_grant') {
-        errorMessage = 'Authorization code expired or invalid. Please try again.';
+      } else if (errorData.error === 'invalid_grant' || errorData.error === 'invalid_request') {
+        errorMessage = 'Authorization code expired or parameters mismatch. Please try again.';
       } else if (errorData.error_description) {
         errorMessage = errorData.error_description;
       } else {
