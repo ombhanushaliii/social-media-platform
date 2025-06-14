@@ -20,4 +20,16 @@ router.get('/test/linkedin-config', (req, res) => {
   });
 });
 
+// Test route for LinkedIn secret
+router.get('/test/linkedin-secret', (req, res) => {
+  const secret = process.env.LINKEDIN_CLIENT_SECRET;
+  res.json({
+    secret_length: secret ? secret.length : 0,
+    secret_preview: secret ? secret.substring(0, 10) + '...' : 'Missing',
+    has_equals: secret ? secret.includes('=') : false,
+    has_padding: secret ? secret.endsWith('==') : false,
+    cleaned_length: secret ? secret.trim().length : 0
+  });
+});
+
 module.exports = router;

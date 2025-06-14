@@ -13,7 +13,6 @@ const linkedinCallback = async (req, res) => {
       error_description: error_description || 'none'
     });
 
-    // Handle OAuth errors from LinkedIn
     if (error) {
       console.error('LinkedIn OAuth error:', error, error_description);
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -30,12 +29,16 @@ const linkedinCallback = async (req, res) => {
 
     console.log('Attempting to exchange code for token...');
 
+    // Clean the client secret - remove any padding or encoding issues
+    const clientSecret = process.env.LINKEDIN_CLIENT_SECRET.trim();
+    console.log('Client secret length:', clientSecret.length);
+
     // Step 3: Exchange authorization code for access token
     const tokenParams = new URLSearchParams({
       grant_type: 'authorization_code',
       code: code,
       client_id: process.env.LINKEDIN_CLIENT_ID,
-      client_secret: process.env.LINKEDIN_CLIENT_SECRET,
+      client_secret: clientSecret, // Use cleaned secret
       redirect_uri: process.env.LINKEDIN_REDIRECT_URI
     });
 
@@ -43,7 +46,7 @@ const linkedinCallback = async (req, res) => {
       grant_type: 'authorization_code',
       client_id: process.env.LINKEDIN_CLIENT_ID,
       redirect_uri: process.env.LINKEDIN_REDIRECT_URI,
-      client_secret: process.env.LINKEDIN_CLIENT_SECRET ? 'Present' : 'Missing',
+      client_secret_length: clientSecret.length,
       code_length: code.length
     });
 
@@ -53,7 +56,7 @@ const linkedinCallback = async (req, res) => {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'application/json'
         },
-        timeout: 15000 // 15 second timeout
+        timeout: 15000
       }
     );
 
@@ -65,7 +68,7 @@ const linkedinCallback = async (req, res) => {
 
     const { access_token, expires_in, refresh_token, scope } = tokenResponse.data;
 
-    // Get user profile information using the userinfo endpoint
+    // Get user profile information
     console.log('Fetching user profile...');
     const profileResponse = await axios.get('https://api.linkedin.com/v2/userinfo', {
       headers: {
@@ -95,35 +98,25 @@ const linkedinCallback = async (req, res) => {
       loginTime: new Date().toISOString()
     };
 
-    // Create a session token (excluding sensitive data)
+    // Create a session token
     const sessionToken = Buffer.from(JSON.stringify(userData)).toString('base64');
 
     // Redirect to frontend with user data
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const redirectUrl = `${frontendUrl}/auth/linkedin/callback?token=${sessionToken}&success=true`;
     
-    console.log('Redirecting to frontend:', frontendUrl);
+    console.log('Redirecting to frontend successfully');
     res.redirect(redirectUrl);
 
   } catch (error) {
-    console.error('LinkedIn OAuth error details:', {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-      headers: error.response?.headers,
-      config: {
-        url: error.config?.url,
-        method: error.config?.method
-      }
-    });
+    console.error('LinkedIn OAuth error details:', error.response?.data || error.message);
     
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     let errorMessage = 'Authentication failed';
     
     if (error.response?.data) {
-      // LinkedIn API error
       if (error.response.data.error === 'invalid_client') {
-        errorMessage = 'Invalid LinkedIn client credentials. Please check client ID and secret.';
+        errorMessage = 'Invalid LinkedIn client credentials. Check client ID and secret format.';
       } else if (error.response.data.error === 'invalid_grant') {
         errorMessage = 'Authorization code expired or invalid. Please try again.';
       } else {
@@ -131,8 +124,6 @@ const linkedinCallback = async (req, res) => {
       }
     } else if (error.message.includes('timeout')) {
       errorMessage = 'Request timeout - please try again';
-    } else if (error.code === 'ENOTFOUND') {
-      errorMessage = 'Network error - unable to connect to LinkedIn';
     } else {
       errorMessage = error.message;
     }
