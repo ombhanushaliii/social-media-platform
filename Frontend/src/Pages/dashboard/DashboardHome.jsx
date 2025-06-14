@@ -49,6 +49,36 @@ const Dashboard = () => {
     clientIcon: isDarkMode ? 'bg-white text-black' : 'bg-gray-900 text-white',
   };
 
+  // Listen for LinkedIn callback (token in URL) - FIXED useEffect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const linkedinToken = params.get("linkedin_token");
+    const linkedinSuccess = params.get("linkedin_success");
+    
+    if (linkedinSuccess === "true" && linkedinToken) {
+      try {
+        const linkedinUserData = JSON.parse(atob(linkedinToken));
+        
+        // Merge LinkedIn data with existing user data
+        const updatedUser = {
+          ...user, // Keep existing user data
+          ...linkedinUserData, // Add LinkedIn data
+          provider: user?.provider || 'email', // Keep original provider if exists
+          linkedinConnected: true
+        };
+        
+        login(updatedUser, linkedinToken);
+        
+        // Remove token from URL after processing
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        console.log('LinkedIn connected successfully!');
+      } catch (error) {
+        console.error('Error processing LinkedIn token:', error);
+      }
+    }
+  }, []); // Remove user and login from dependencies to prevent infinite loop
+
   // Handle client selection from sidebar
   const handleClientSelect = (client) => {
     setSelectedClient(client);
@@ -86,10 +116,10 @@ const Dashboard = () => {
     if (platform === 'instagram') {
       setShowPostCreator(true);
     } else if (platform === 'linkedin') {
-      if (user?.provider === 'linkedin' && user?.linkedinAccessToken) {
+      if (user?.linkedinAccessToken) {
         setShowLinkedInCreator(true);
       } else {
-        alert('Please log in with LinkedIn to post to LinkedIn');
+        alert('Please connect your LinkedIn account first');
       }
     }
   };
@@ -105,36 +135,6 @@ const Dashboard = () => {
     window.location.href = linkedinAuthUrl;
   };
 
-  // Listen for LinkedIn callback (token in URL)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const linkedinToken = params.get("linkedin_token");
-    const linkedinSuccess = params.get("linkedin_success");
-    
-    if (linkedinSuccess === "true" && linkedinToken) {
-      try {
-        const linkedinUserData = JSON.parse(atob(linkedinToken));
-        
-        // Merge LinkedIn data with existing user data
-        const updatedUser = {
-          ...user, // Keep existing user data
-          ...linkedinUserData, // Add LinkedIn data
-          provider: user?.provider || 'email', // Keep original provider if exists
-          linkedinConnected: true
-        };
-        
-        login(updatedUser, linkedinToken);
-        
-        // Remove token from URL after processing
-        window.history.replaceState({}, document.title, window.location.pathname);
-        
-        console.log('LinkedIn connected successfully!');
-      } catch (error) {
-        console.error('Error processing LinkedIn token:', error);
-      }
-    }
-  }, [login, user]);
-
   return (
     <div 
       className={`flex flex-col h-screen ${themeClasses.bg} ${themeClasses.text} transition-all duration-300`}
@@ -144,13 +144,31 @@ const Dashboard = () => {
       <header className={`${themeClasses.cardBg} ${themeClasses.border} border-b z-10 relative`}>
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center">
+            <div className="flex items-center space-x-4">
               <h1 className="text-xl font-bold text-blue-600">Whizmedia</h1>
-              {user?.provider === 'linkedin' && (
-                <div className="ml-4 flex items-center space-x-2 px-3 py-1 bg-blue-100 dark:bg-blue-900 rounded-full">
+              
+              {/* LinkedIn Connection Status - MOVED TO HEADER */}
+              {user?.linkedinAccessToken ? (
+                <div className="flex items-center space-x-2 px-3 py-1 bg-blue-100 dark:bg-blue-900 rounded-full">
                   <Linkedin className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs font-medium text-blue-600">LinkedIn Connected</span>
+                  <span className="text-xs font-medium text-blue-600">
+                    {user.name || user.firstName || "LinkedIn User"}
+                  </span>
+                  <button
+                    onClick={() => setShowLinkedInCreator(true)}
+                    className="ml-2 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-all"
+                  >
+                    Post
+                  </button>
                 </div>
+              ) : (
+                <button
+                  onClick={handleLinkedInConnect}
+                  className="flex items-center gap-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-full font-medium transition-all"
+                >
+                  <Linkedin className="w-4 h-4" />
+                  Connect LinkedIn
+                </button>
               )}
             </div>
 
@@ -464,15 +482,15 @@ const Dashboard = () => {
                             <button
                               onClick={() => handleCreatePost('linkedin')}
                               className={`w-full px-4 py-3 text-left ${themeClasses.hover} flex items-center space-x-3 rounded-b-lg ${
-                                user?.provider !== 'linkedin' ? 'opacity-50 cursor-not-allowed' : ''
+                                !user?.linkedinAccessToken ? 'opacity-50 cursor-not-allowed' : ''
                               }`}
-                              disabled={user?.provider !== 'linkedin'}
+                              disabled={!user?.linkedinAccessToken}
                             >
                               <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center">
                                 <Linkedin className="h-4 w-4 text-white" />
                               </div>
                               <span className={themeClasses.text}>
-                                LinkedIn Post {user?.provider !== 'linkedin' && '(Login Required)'}
+                                LinkedIn Post {!user?.linkedinAccessToken && '(Connect Required)'}
                               </span>
                             </button>
                           </div>
@@ -590,32 +608,6 @@ const Dashboard = () => {
           onPostSuccess={handlePostSuccess}
         />
       )}
-
-      {/* LinkedIn Connect Section - move this to a better location in your UI */}
-      <div className="mb-6">
-        {!user?.linkedinAccessToken ? (
-          <button
-            onClick={handleLinkedInConnect}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-all"
-          >
-            <Linkedin className="w-5 h-5" />
-            Connect LinkedIn
-          </button>
-        ) : (
-          <div className="flex items-center gap-3 bg-blue-50 dark:bg-blue-900 px-4 py-2 rounded-lg">
-            <Linkedin className="w-5 h-5 text-blue-600" />
-            <span className="font-medium text-blue-700 dark:text-blue-300">
-              {user.name || user.firstName || "LinkedIn User"}
-            </span>
-            <button
-              onClick={() => setShowLinkedInCreator(true)}
-              className="ml-4 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition-all"
-            >
-              Post to LinkedIn
-            </button>
-          </div>
-        )}
-      </div>
     </div>
   );
 };
