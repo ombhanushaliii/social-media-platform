@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Login from "./Pages/auth/Login";
-import Dashboard from "./Pages/dashboard/DashboardHome"; // placeholder
+import LinkedInCallback from "./Pages/auth/LinkedInCallback";
+import Dashboard from "./Pages/dashboard/DashboardHome";
 import ProtectedRoute from "./Components/ProtectedRoute";
 
 const App = () => {
@@ -8,9 +9,8 @@ const App = () => {
     <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
-
-
-
+        <Route path="/auth/linkedin/callback" element={<LinkedInCallback />} />
+        
         <Route
           path="/dashboard"
           element={

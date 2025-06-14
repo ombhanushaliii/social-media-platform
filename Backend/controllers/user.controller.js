@@ -1,141 +1,99 @@
 const axios = require("axios");
 const cloudinary = require("cloudinary").v2;
 
+// LinkedIn OAuth callback handler
+const linkedinCallback = async (req, res) => {
+  try {
+    const { code, state, error, error_description } = req.query;
 
-// const signup = async (req, res) => {
-//   try {
-//     const { name, email, password } = req.body;
+    // Handle OAuth errors
+    if (error) {
+      console.error('LinkedIn OAuth error:', error, error_description);
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const errorUrl = `${frontendUrl}/auth/linkedin/callback?error=${error}&message=${encodeURIComponent(error_description || 'LinkedIn authentication failed')}`;
+      return res.redirect(errorUrl);
+    }
 
-//     // basic validation
-//     if (!name?.trim() || !email?.trim() || !password) {
-//       return res.status(400).json({ message: "All fields are required" });
-//     }
+    if (!code) {
+      return res.status(400).json({ 
+        error: 'Authorization code not provided',
+        message: 'LinkedIn OAuth callback requires authorization code'
+      });
+    }
 
-//     // email format check
-//     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-//     if (!emailRegex.test(email)) {
-//       return res.status(400).json({ message: "Invalid email format" });
-//     }
+    console.log('LinkedIn callback received code:', code.substring(0, 20) + '...');
 
-//     // password length check
-//     if (password.length < 6) {
-//       return res.status(400).json({ message: "Password must be at least 6 characters" });
-//     }
+    // Step 3: Exchange authorization code for access token
+    const tokenResponse = await axios.post('https://www.linkedin.com/oauth/v2/accessToken', 
+      new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: code,
+        client_id: process.env.LINKEDIN_CLIENT_ID,
+        client_secret: process.env.LINKEDIN_CLIENT_SECRET,
+        redirect_uri: process.env.LINKEDIN_REDIRECT_URI
+      }), {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
+    );
 
-//     // check if email already exists
-//     let existingUser;
-//     try {
-//       existingUser = await admin.auth().getUserByEmail(email);
-//     } catch (err) {
-//       // ignore if user not found
-//     }
+    const { access_token, expires_in, refresh_token, scope } = tokenResponse.data;
+    console.log('LinkedIn access token received, expires in:', expires_in);
 
-//     if (existingUser) {
-//       return res.status(400).json({ message: "Email already in use" });
-//     }
+    // Get user profile information using userinfo endpoint
+    const profileResponse = await axios.get('https://api.linkedin.com/v2/userinfo', {
+      headers: {
+        'Authorization': `Bearer ${access_token}`
+      }
+    });
 
-//     // create user in firebase auth
-//     const userRecord = await admin.auth().createUser({
-//       email,
-//       password,
-//       displayName: name,
-//     });
+    const userProfile = profileResponse.data;
+    console.log('LinkedIn profile received:', userProfile.email);
 
-//     // save user in firestore
-//     await db.collection("users").doc(userRecord.uid).set({
-//       uid: userRecord.uid,
-//       email,
-//       name,
-//       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-//     });
+    // Create user data object
+    const userData = {
+      id: userProfile.sub,
+      email: userProfile.email,
+      name: userProfile.name,
+      firstName: userProfile.given_name,
+      lastName: userProfile.family_name,
+      picture: userProfile.picture,
+      linkedinId: userProfile.sub,
+      provider: 'linkedin',
+      accessToken: access_token,
+      refreshToken: refresh_token,
+      expiresIn: expires_in,
+      scope: scope
+    };
 
-//     // generate jwt token
-//     const token = jwt.sign({ uid: userRecord.uid }, JWT_SECRET, { expiresIn: "7d" });
+    // Create a simple session token (in production, use proper JWT)
+    const sessionToken = Buffer.from(JSON.stringify({
+      ...userData,
+      // Don't include sensitive tokens in the frontend token
+      accessToken: undefined,
+      refreshToken: undefined
+    })).toString('base64');
 
-//     // set cookie
-//     res.cookie(COOKIE_NAME, token, {
-//       httpOnly: true,
-//       secure: process.env.NODE_ENV === "production",
-//       sameSite: "strict",
-//       maxAge: 7 * 24 * 60 * 60 * 1000,
-//     });
+    // Redirect to frontend with user data
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const redirectUrl = `${frontendUrl}/auth/linkedin/callback?token=${sessionToken}&success=true`;
+    
+    console.log('Redirecting to frontend...');
+    res.redirect(redirectUrl);
 
-//     res.status(201).json({
-//       message: "Signup successful",
-//       user: { uid: userRecord.uid, email, name,token },
-//     });
+  } catch (error) {
+    console.error('LinkedIn OAuth error:', error.response?.data || error.message);
+    
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const errorMessage = error.response?.data?.error_description || error.message || 'Authentication failed';
+    const errorUrl = `${frontendUrl}/auth/linkedin/callback?error=oauth_failed&message=${encodeURIComponent(errorMessage)}`;
+    
+    res.redirect(errorUrl);
+  }
+};
 
-//   } catch (error) {
-//     console.error("Signup error:", error);
-
-//     if (error.code && error.code.includes("auth")) {
-//       return res.status(400).json({ message: error.message });
-//     }
-
-//     res.status(500).json({
-//       message: "Something went wrong",
-//       error: error.message,
-//     });
-//   }
-// };
-
-
-
-
-// const login = async (req, res) => {
-//   try {
-//     const { email, password } = req.body;
-
-//     if (!email?.trim() || !password) {
-//       return res.status(400).json({ message: "Email and password are required" });
-//     }
-
-//     // Firebase Auth REST API Login
-//     const response = await axios.post(
-//       `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${process.env.FIREBASE_API_KEY}`,
-//       {
-//         email,
-//         password,
-//         returnSecureToken: true,
-//       }
-//     );
-
-//     const { idToken, localId } = response.data;
-
-//     // fetch user data from Firestore
-//     const userDoc = await db.collection("users").doc(localId).get();
-
-//     if (!userDoc.exists) {
-//       return res.status(404).json({ message: "User data not found" });
-//     }
-
-//     const user = userDoc.data();
-
-//     // generate jwt token for your own session (optional)
-//     const token = jwt.sign({ uid: localId }, JWT_SECRET, { expiresIn: "7d" });
-
-//     // set cookie
-//     res.cookie(COOKIE_NAME, token, {
-//       httpOnly: true,
-//       secure: process.env.NODE_ENV === "production",
-//       sameSite: "strict",
-//       maxAge: 7 * 24 * 60 * 60 * 1000,
-//     });
-
-//     res.status(200).json({
-//       message: "Login successful",
-//       user: { uid: user.uid, email: user.email, name: user.name,token },
-//     });
-
-//   } catch (error) {
-//     console.error("Login error:", error.response?.data || error.message);
-//     res.status(401).json({
-//       message: "Login failed",
-//       error: error.response?.data?.error?.message || error.message,
-//     });
-//   }
-// };
-
+// Existing post function
 const post = async (req, res) => {
   try {
     if (!req.file) {
@@ -195,4 +153,4 @@ const post = async (req, res) => {
   }
 };
 
-module.exports = { post };
+module.exports = { post, linkedinCallback };

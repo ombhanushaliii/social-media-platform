@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, ArrowRight, Linkedin } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../Context/AuthContext";
 import logo from "../../assets/logo.png";
@@ -10,6 +10,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [linkedinLoading, setLinkedinLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
 
@@ -23,7 +24,8 @@ const Login = () => {
       if (email === "user@whizmedia.com" && password === "user@123") {
         const userData = {
           email: "user@whizmedia.com",
-          name: "Whizmedia User"
+          name: "Whizmedia User",
+          provider: "email"
         };
         login(userData, "hardcoded-token");
         navigate("/dashboard");
@@ -37,6 +39,25 @@ const Login = () => {
     }
   };
 
+  const handleLinkedInLogin = () => {
+    setLinkedinLoading(true);
+    setError("");
+
+    // LinkedIn OAuth parameters
+    const clientId = 'YOUR_LINKEDIN_CLIENT_ID'; // Replace with your actual client ID
+    const redirectUri = encodeURIComponent('https://your-backend-url.onrender.com/user/auth/linkedin/callback');
+    const scope = encodeURIComponent('openid profile email');
+    const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    
+    // Store state in localStorage for CSRF protection
+    localStorage.setItem('linkedin_state', state);
+    
+    const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}`;
+    
+    console.log('Redirecting to LinkedIn OAuth...');
+    window.location.href = linkedinAuthUrl;
+  };
+
   return (
     <div className="min-h-screen flex" style={{ fontFamily: "Montserrat, sans-serif" }}>
       {/* Left Panel */}
@@ -48,6 +69,33 @@ const Login = () => {
 
           <h2 className="text-3xl font-bold text-white mb-2">Welcome Back 👋</h2>
           <p className="text-sm text-gray-400 mb-6">Login to your dashboard</p>
+
+          {/* LinkedIn Login Button */}
+          <button
+            type="button"
+            onClick={handleLinkedInLogin}
+            disabled={linkedinLoading}
+            className="w-80 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 disabled:hover:scale-100 flex items-center justify-center gap-2 mb-4"
+          >
+            {linkedinLoading ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>Connecting...</span>
+              </>
+            ) : (
+              <>
+                <Linkedin className="w-5 h-5" />
+                <span>Continue with LinkedIn</span>
+              </>
+            )}
+          </button>
+
+          {/* Divider */}
+          <div className="flex items-center my-6">
+            <div className="flex-1 border-t border-gray-700"></div>
+            <span className="px-3 text-gray-500 text-sm">OR</span>
+            <div className="flex-1 border-t border-gray-700"></div>
+          </div>
 
           <form onSubmit={handleEmailLogin} className="space-y-5">
             {/* Email */}
@@ -97,11 +145,20 @@ const Login = () => {
             >
               {isLoading ? "Signing in..." : (
                 <div className="flex items-center justify-center gap-2">
-                  <span>Login</span> <ArrowRight size={18} />
+                  <span>Login with Email</span>
+                  <ArrowRight size={18} />
                 </div>
               )}
             </button>
           </form>
+
+          {/* Test Credentials Note */}
+          <div className="mt-6 p-3 bg-gray-900 border border-gray-700 rounded-lg">
+            <p className="text-xs text-gray-400 text-center">
+              <strong className="text-gray-300">Test Email Login:</strong><br />
+              user@whizmedia.com / user@123
+            </p>
+          </div>
         </div>
       </div>
 
