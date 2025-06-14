@@ -47,8 +47,12 @@ const linkedinCallback = async (req, res) => {
       throw new Error('Missing LinkedIn environment variables');
     }
 
+    console.log("Client ID:", process.env.LINKEDIN_CLIENT_ID);
+    console.log("Client Secret:", process.env.LINKEDIN_CLIENT_SECRET);
+    console.log("Redirect URI:", process.env.LINKEDIN_REDIRECT_URI);
+
     // Step 3: Exchange authorization code for access token
-    // DO NOT encode redirect_uri here, just use the raw string
+    // Use credentials as-is, no trimming or encoding
     const requestBody = `grant_type=authorization_code&code=${code}&client_id=${clientId}&client_secret=${clientSecret}&redirect_uri=${redirectUri}`;
 
     console.log('Making token request to LinkedIn...');
