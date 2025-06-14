@@ -29,32 +29,39 @@ const linkedinCallback = async (req, res) => {
 
     console.log('Attempting to exchange code for token...');
 
-    // Clean the client secret - remove any padding or encoding issues
-    const clientSecret = process.env.LINKEDIN_CLIENT_SECRET.trim();
-    console.log('Client secret length:', clientSecret.length);
+    // Clean and validate environment variables
+    const clientId = process.env.LINKEDIN_CLIENT_ID?.trim();
+    const clientSecret = process.env.LINKEDIN_CLIENT_SECRET?.trim();
+    const redirectUri = process.env.LINKEDIN_REDIRECT_URI?.trim();
+
+    console.log('Environment validation:', {
+      client_id: clientId || 'MISSING',
+      client_secret: clientSecret ? `Present (${clientSecret.length} chars)` : 'MISSING',
+      redirect_uri: redirectUri || 'MISSING',
+      client_secret_starts_with: clientSecret ? clientSecret.substring(0, 10) + '...' : 'N/A'
+    });
+
+    if (!clientId || !clientSecret || !redirectUri) {
+      throw new Error('Missing LinkedIn environment variables');
+    }
 
     // Step 3: Exchange authorization code for access token
     const tokenParams = new URLSearchParams({
       grant_type: 'authorization_code',
       code: code,
-      client_id: process.env.LINKEDIN_CLIENT_ID,
-      client_secret: clientSecret, // Use cleaned secret
-      redirect_uri: process.env.LINKEDIN_REDIRECT_URI
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri
     });
 
-    console.log('Token exchange parameters:', {
-      grant_type: 'authorization_code',
-      client_id: process.env.LINKEDIN_CLIENT_ID,
-      redirect_uri: process.env.LINKEDIN_REDIRECT_URI,
-      client_secret_length: clientSecret.length,
-      code_length: code.length
-    });
+    console.log('Making token request to LinkedIn...');
 
     const tokenResponse = await axios.post('https://www.linkedin.com/oauth/v2/accessToken', 
       tokenParams.toString(), {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'User-Agent': 'WhizmediaApp/1.0'
         },
         timeout: 15000
       }
@@ -85,7 +92,7 @@ const linkedinCallback = async (req, res) => {
       sub: userProfile.sub
     });
 
-    // Create user data object
+    // Create user data object (including access token for LinkedIn posting)
     const userData = {
       id: userProfile.sub,
       email: userProfile.email,
@@ -95,7 +102,10 @@ const linkedinCallback = async (req, res) => {
       picture: userProfile.picture,
       linkedinId: userProfile.sub,
       provider: 'linkedin',
-      loginTime: new Date().toISOString()
+      loginTime: new Date().toISOString(),
+      // Store LinkedIn access token securely
+      linkedinAccessToken: access_token,
+      tokenExpiresIn: expires_in
     };
 
     // Create a session token
@@ -109,18 +119,27 @@ const linkedinCallback = async (req, res) => {
     res.redirect(redirectUrl);
 
   } catch (error) {
-    console.error('LinkedIn OAuth error details:', error.response?.data || error.message);
+    console.error('LinkedIn OAuth error details:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers
+      }
+    });
     
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     let errorMessage = 'Authentication failed';
     
     if (error.response?.data) {
       if (error.response.data.error === 'invalid_client') {
-        errorMessage = 'Invalid LinkedIn client credentials. Check client ID and secret format.';
+        errorMessage = 'Invalid LinkedIn credentials. Please check your LinkedIn app configuration.';
       } else if (error.response.data.error === 'invalid_grant') {
-        errorMessage = 'Authorization code expired or invalid. Please try again.';
+        errorMessage = 'Authorization code expired. Please try logging in again.';
       } else {
-        errorMessage = error.response.data.error_description || error.response.data.error || 'LinkedIn API error';
+        errorMessage = error.response.data.error_description || 'LinkedIn API error';
       }
     } else if (error.message.includes('timeout')) {
       errorMessage = 'Request timeout - please try again';
@@ -133,7 +152,112 @@ const linkedinCallback = async (req, res) => {
   }
 };
 
-// Existing post function
+// LinkedIn post function
+const linkedinPost = async (req, res) => {
+  try {
+    const { content, linkedinAccessToken, authorId } = req.body;
+
+    if (!linkedinAccessToken) {
+      return res.status(400).json({
+        error: 'LinkedIn access token required',
+        message: 'Please authenticate with LinkedIn first'
+      });
+    }
+
+    let mediaAsset = null;
+
+    // If there's an image, upload it to LinkedIn first
+    if (req.file) {
+      console.log('Uploading image to LinkedIn...');
+      
+      // Step 1: Register upload for LinkedIn
+      const registerResponse = await axios.post('https://api.linkedin.com/v2/assets?action=registerUpload', {
+        registerUploadRequest: {
+          recipes: ["urn:li:digitalmediaRecipe:feedshare-image"],
+          owner: `urn:li:person:${authorId}`,
+          serviceRelationships: [{
+            relationshipType: "OWNER",
+            identifier: "urn:li:userGeneratedContent"
+          }]
+        }
+      }, {
+        headers: {
+          'Authorization': `Bearer ${linkedinAccessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const uploadUrl = registerResponse.data.value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'].uploadUrl;
+      const asset = registerResponse.data.value.asset;
+
+      // Step 2: Upload the actual image
+      await axios.put(uploadUrl, req.file.buffer, {
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'Authorization': `Bearer ${linkedinAccessToken}`
+        }
+      });
+
+      mediaAsset = asset;
+      console.log('Image uploaded to LinkedIn successfully');
+    }
+
+    // Step 3: Create the LinkedIn post
+    const postData = {
+      author: `urn:li:person:${authorId}`,
+      lifecycleState: "PUBLISHED",
+      specificContent: {
+        "com.linkedin.ugc.ShareContent": {
+          shareCommentary: {
+            text: content
+          },
+          shareMediaCategory: mediaAsset ? "IMAGE" : "NONE"
+        }
+      },
+      visibility: {
+        "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
+      }
+    };
+
+    // Add media if present
+    if (mediaAsset) {
+      postData.specificContent["com.linkedin.ugc.ShareContent"].media = [{
+        status: "READY",
+        description: {
+          text: "Image"
+        },
+        media: mediaAsset,
+        title: {
+          text: "Post Image"
+        }
+      }];
+    }
+
+    const linkedinResponse = await axios.post('https://api.linkedin.com/v2/ugcPosts', postData, {
+      headers: {
+        'Authorization': `Bearer ${linkedinAccessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('LinkedIn post created successfully');
+
+    res.json({
+      success: true,
+      linkedinPostId: linkedinResponse.data.id,
+      message: 'Post published successfully to LinkedIn'
+    });
+
+  } catch (error) {
+    console.error('LinkedIn posting error:', error.response?.data || error.message);
+    res.status(500).json({
+      error: 'Failed to post to LinkedIn',
+      details: error.response?.data || error.message
+    });
+  }
+};
+
+// Instagram post function (existing)
 const post = async (req, res) => {
   try {
     if (!req.file) {
@@ -193,4 +317,4 @@ const post = async (req, res) => {
   }
 };
 
-module.exports = { post, linkedinCallback };
+module.exports = { post, linkedinPost, linkedinCallback };
