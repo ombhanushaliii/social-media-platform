@@ -7,7 +7,7 @@ const LinkedInCallback = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [status, setStatus] = useState('processing'); // processing, success, error
+  const [status, setStatus] = useState('processing');
   const [message, setMessage] = useState('Processing LinkedIn authentication...');
   const [userInfo, setUserInfo] = useState(null);
   const [countdown, setCountdown] = useState(3);
@@ -15,16 +15,20 @@ const LinkedInCallback = () => {
   useEffect(() => {
     const handleCallback = async () => {
       try {
+        console.log('LinkedIn callback processing...'); // Debug log
+        
         const token = searchParams.get('token');
         const success = searchParams.get('success');
         const error = searchParams.get('error');
         const errorMessage = searchParams.get('message');
 
+        console.log('Callback params:', { token: !!token, success, error }); // Debug log
+
         if (error) {
+          console.error('LinkedIn error:', error, errorMessage);
           setStatus('error');
           setMessage(errorMessage || 'LinkedIn authentication failed');
           
-          // Start countdown for redirect
           const timer = setInterval(() => {
             setCountdown(prev => {
               if (prev <= 1) {
@@ -40,12 +44,17 @@ const LinkedInCallback = () => {
         }
 
         if (success === 'true' && token) {
+          console.log('Processing successful LinkedIn authentication...'); // Debug log
+          
           // Decode user data from token
           const userData = JSON.parse(atob(token));
+          console.log('Decoded user data:', userData); // Debug log
+          
           setUserInfo(userData);
           
           // Login user with LinkedIn data
           login(userData, token);
+          console.log('User logged in successfully'); // Debug log
           
           setStatus('success');
           setMessage(`Welcome ${userData.firstName || userData.name}! LinkedIn authentication successful.`);
@@ -55,6 +64,7 @@ const LinkedInCallback = () => {
             setCountdown(prev => {
               if (prev <= 1) {
                 clearInterval(timer);
+                console.log('Redirecting to dashboard...'); // Debug log
                 navigate('/dashboard');
                 return 0;
               }
@@ -62,6 +72,7 @@ const LinkedInCallback = () => {
             });
           }, 1000);
         } else {
+          console.error('Invalid callback parameters');
           setStatus('error');
           setMessage('Invalid authentication response from LinkedIn');
           setTimeout(() => navigate('/login'), 3000);
@@ -69,12 +80,14 @@ const LinkedInCallback = () => {
       } catch (err) {
         console.error('LinkedIn callback error:', err);
         setStatus('error');
-        setMessage('Failed to process LinkedIn authentication');
+        setMessage(`Failed to process LinkedIn authentication: ${err.message}`);
         setTimeout(() => navigate('/login'), 3000);
       }
     };
 
-    handleCallback();
+    // Small delay to ensure DOM is ready
+    const timer = setTimeout(handleCallback, 100);
+    return () => clearTimeout(timer);
   }, [searchParams, navigate, login]);
 
   return (
@@ -116,7 +129,7 @@ const LinkedInCallback = () => {
           {/* Title */}
           <h2 className="text-2xl font-bold text-white mb-3">
             {status === 'processing' && 'Authenticating...'}
-            {status === 'success' && 'Authentication Successful!'}
+            {status === 'success' && 'Welcome to Whizmedia!'}
             {status === 'error' && 'Authentication Failed'}
           </h2>
 
@@ -134,6 +147,7 @@ const LinkedInCallback = () => {
                 <div className="text-left">
                   <p className="text-white font-medium">{userInfo.name}</p>
                   <p className="text-gray-400 text-sm">{userInfo.email}</p>
+                  <p className="text-blue-400 text-xs">LinkedIn Account</p>
                 </div>
               </div>
             </div>
