@@ -43,9 +43,9 @@ const Login = () => {
     setLinkedinLoading(true);
     setError("");
 
-    // LinkedIn OAuth parameters
-    const clientId = 'YOUR_LINKEDIN_CLIENT_ID'; // Replace with your actual client ID
-    const redirectUri = encodeURIComponent('https://your-backend-url.onrender.com/user/auth/linkedin/callback');
+    // LinkedIn OAuth parameters using your actual credentials from .env
+    const clientId = '8697l9ulxdvqmx'; // Your actual LinkedIn Client ID
+    const redirectUri = encodeURIComponent('https://whizmedia-backend.onrender.com/user/auth/linkedin/callback');
     const scope = encodeURIComponent('openid profile email');
     const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     
@@ -54,7 +54,7 @@ const Login = () => {
     
     const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}`;
     
-    console.log('Redirecting to LinkedIn OAuth...');
+    console.log('Redirecting to LinkedIn OAuth:', linkedinAuthUrl);
     window.location.href = linkedinAuthUrl;
   };
 
@@ -80,7 +80,7 @@ const Login = () => {
             {linkedinLoading ? (
               <>
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>Connecting...</span>
+                <span>Connecting to LinkedIn...</span>
               </>
             ) : (
               <>
