@@ -6,6 +6,13 @@ const linkedinCallback = async (req, res) => {
   try {
     const { code, state, error, error_description } = req.query;
 
+    console.log('LinkedIn callback received:', {
+      code: code ? code.substring(0, 10) + '...' : 'missing',
+      state: state || 'missing',
+      error: error || 'none',
+      error_description: error_description || 'none'
+    });
+
     // Handle OAuth errors from LinkedIn
     if (error) {
       console.error('LinkedIn OAuth error:', error, error_description);
@@ -21,11 +28,9 @@ const linkedinCallback = async (req, res) => {
       return res.redirect(errorUrl);
     }
 
-    console.log('LinkedIn callback received code:', code.substring(0, 20) + '...');
-    console.log('State parameter:', state);
+    console.log('Attempting to exchange code for token...');
 
     // Step 3: Exchange authorization code for access token
-    // Using application/x-www-form-urlencoded as specified in LinkedIn docs
     const tokenParams = new URLSearchParams({
       grant_type: 'authorization_code',
       code: code,
@@ -34,10 +39,11 @@ const linkedinCallback = async (req, res) => {
       redirect_uri: process.env.LINKEDIN_REDIRECT_URI
     });
 
-    console.log('Token request params:', {
+    console.log('Token exchange parameters:', {
       grant_type: 'authorization_code',
       client_id: process.env.LINKEDIN_CLIENT_ID,
       redirect_uri: process.env.LINKEDIN_REDIRECT_URI,
+      client_secret: process.env.LINKEDIN_CLIENT_SECRET ? 'Present' : 'Missing',
       code_length: code.length
     });
 
@@ -47,25 +53,34 @@ const linkedinCallback = async (req, res) => {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'application/json'
         },
-        timeout: 10000 // 10 second timeout
+        timeout: 15000 // 15 second timeout
       }
     );
 
+    console.log('LinkedIn token response received:', {
+      status: tokenResponse.status,
+      expires_in: tokenResponse.data.expires_in,
+      scope: tokenResponse.data.scope
+    });
+
     const { access_token, expires_in, refresh_token, scope } = tokenResponse.data;
-    console.log('LinkedIn access token received, expires in:', expires_in);
-    console.log('Granted scopes:', scope);
 
     // Get user profile information using the userinfo endpoint
+    console.log('Fetching user profile...');
     const profileResponse = await axios.get('https://api.linkedin.com/v2/userinfo', {
       headers: {
         'Authorization': `Bearer ${access_token}`,
         'Accept': 'application/json'
       },
-      timeout: 10000
+      timeout: 15000
     });
 
     const userProfile = profileResponse.data;
-    console.log('LinkedIn profile received for:', userProfile.email);
+    console.log('LinkedIn profile received:', {
+      email: userProfile.email,
+      name: userProfile.name,
+      sub: userProfile.sub
+    });
 
     // Create user data object
     const userData = {
@@ -87,7 +102,7 @@ const linkedinCallback = async (req, res) => {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const redirectUrl = `${frontendUrl}/auth/linkedin/callback?token=${sessionToken}&success=true`;
     
-    console.log('Redirecting to frontend successfully');
+    console.log('Redirecting to frontend:', frontendUrl);
     res.redirect(redirectUrl);
 
   } catch (error) {
@@ -95,10 +110,10 @@ const linkedinCallback = async (req, res) => {
       message: error.message,
       response: error.response?.data,
       status: error.response?.status,
+      headers: error.response?.headers,
       config: {
         url: error.config?.url,
-        method: error.config?.method,
-        headers: error.config?.headers
+        method: error.config?.method
       }
     });
     
@@ -107,9 +122,17 @@ const linkedinCallback = async (req, res) => {
     
     if (error.response?.data) {
       // LinkedIn API error
-      errorMessage = error.response.data.error_description || error.response.data.error || 'LinkedIn API error';
+      if (error.response.data.error === 'invalid_client') {
+        errorMessage = 'Invalid LinkedIn client credentials. Please check client ID and secret.';
+      } else if (error.response.data.error === 'invalid_grant') {
+        errorMessage = 'Authorization code expired or invalid. Please try again.';
+      } else {
+        errorMessage = error.response.data.error_description || error.response.data.error || 'LinkedIn API error';
+      }
     } else if (error.message.includes('timeout')) {
       errorMessage = 'Request timeout - please try again';
+    } else if (error.code === 'ENOTFOUND') {
+      errorMessage = 'Network error - unable to connect to LinkedIn';
     } else {
       errorMessage = error.message;
     }

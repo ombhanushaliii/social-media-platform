@@ -8,6 +8,7 @@ const App = () => {
   return (
     <Router>
       <Routes>
+        <Route path="/" element={<Login />} />
         <Route path="/login" element={<Login />} />
         <Route path="/auth/linkedin/callback" element={<LinkedInCallback />} />
         
@@ -20,6 +21,7 @@ const App = () => {
           }
         />
 
+        {/* Catch all route - redirect to login */}
         <Route path="*" element={<Login />} />
       </Routes>
     </Router>
