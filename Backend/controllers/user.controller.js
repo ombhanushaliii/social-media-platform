@@ -48,8 +48,8 @@ const linkedinCallback = async (req, res) => {
     }
 
     // Step 3: Exchange authorization code for access token
-    // EXACTLY as per LinkedIn documentation
-    const requestBody = `grant_type=authorization_code&code=${code}&client_id=${clientId}&client_secret=${clientSecret}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    // DO NOT encode redirect_uri here, just use the raw string
+    const requestBody = `grant_type=authorization_code&code=${code}&client_id=${clientId}&client_secret=${clientSecret}&redirect_uri=${redirectUri}`;
 
     console.log('Making token request to LinkedIn...');
     console.log('Request body format:', requestBody.replace(clientSecret, 'HIDDEN'));
