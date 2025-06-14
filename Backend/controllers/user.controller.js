@@ -29,7 +29,7 @@ const linkedinCallback = async (req, res) => {
 
     console.log('Attempting to exchange code for token...');
 
-    // Get environment variables - EXACTLY as stored
+    // Get environment variables
     const clientId = process.env.LINKEDIN_CLIENT_ID;
     const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
     const redirectUri = process.env.LINKEDIN_REDIRECT_URI;
@@ -48,18 +48,24 @@ const linkedinCallback = async (req, res) => {
     }
 
     // Step 3: Exchange authorization code for access token
-    // Using the EXACT format from LinkedIn documentation
-    const tokenRequestBody = `grant_type=authorization_code&code=${encodeURIComponent(code)}&client_id=${encodeURIComponent(clientId)}&client_secret=${encodeURIComponent(clientSecret)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    // Use URLSearchParams for proper encoding (this is the fix!)
+    const tokenParams = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code: code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri
+    });
 
     console.log('Making token request to LinkedIn...');
 
     const tokenResponse = await axios.post('https://www.linkedin.com/oauth/v2/accessToken', 
-      tokenRequestBody, {
+      tokenParams, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'application/json'
         },
-        timeout: 30000 // Increase timeout to 30 seconds
+        timeout: 30000
       }
     );
 
