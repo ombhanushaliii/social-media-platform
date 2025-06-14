@@ -64,8 +64,21 @@ const linkedinCallback = async (req, res) => {
     console.log('Making token request to LinkedIn...');
     console.log('Request body format:', requestBody.replace(clientSecret, 'HIDDEN'));
 
-    const tokenResponse = await axios.post('https://www.linkedin.com/oauth/v2/accessToken', 
-      requestBody, {
+    // Use URLSearchParams for proper encoding
+    const data = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri,
+    });
+
+    console.log('Raw request body:', data.toString());
+
+    const tokenResponse = await axios.post(
+      'https://www.linkedin.com/oauth/v2/accessToken',
+      data,
+      {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'application/json'
