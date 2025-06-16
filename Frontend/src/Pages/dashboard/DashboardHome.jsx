@@ -165,13 +165,14 @@ const Dashboard = () => {
   const handleLinkedInConnect = () => {
     const clientId = '776rnhewhggkqz'; // Use the correct client ID from your .env
     const redirectUri = 'https://whizmedia-backend.onrender.com/user/auth/linkedin/callback';
-    const scope = 'w_member_social';
+    
+    const scope = 'r_liteprofile w_member_social';
     const state = Math.random().toString(36).substring(2, 15);
-    
+
     localStorage.setItem('linkedin_state', state);
-    
+
     const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}`;
-    
+
     console.log('Opening LinkedIn popup...');
     
     // Open popup
