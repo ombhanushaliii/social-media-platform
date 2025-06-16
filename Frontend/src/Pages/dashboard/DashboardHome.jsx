@@ -51,61 +51,68 @@ const Dashboard = () => {
 
   // Listen for LinkedIn callback (token in URL) - FIXED useEffect
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    // Handle LinkedIn popup messages
+    const handleMessage = (event) => {
+      // Verify origin for security
+      if (event.origin !== 'https://whizmedia-backend.onrender.com') {
+        return;
+      }
+      
+      if (event.data.type === 'LINKEDIN_SUCCESS') {
+        const linkedinUserData = event.data.userData;
+        
+        // Merge LinkedIn data with existing user data
+        const updatedUser = {
+          ...user, // Keep existing user data (email login)
+          ...linkedinUserData, // Add LinkedIn data
+          provider: user?.provider || 'email', // Keep original provider
+          linkedinConnected: true
+        };
+        
+        login(updatedUser, linkedinUserData.linkedinAccessToken);
+        console.log('LinkedIn connected successfully via popup!', updatedUser);
+      }
+    };
     
-    // Handle LinkedIn connection from sessionStorage (primary method)
+    // Add event listener for popup messages
+    window.addEventListener('message', handleMessage);
+    
+    // Cleanup event listener
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [user, login]);
+
+  // Fallback: Handle LinkedIn connection from URL token (backup method)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
     const linkedinConnected = params.get("linkedin_connected");
+    
     if (linkedinConnected === "true") {
       const storedLinkedinData = sessionStorage.getItem('linkedin_user_data');
       if (storedLinkedinData) {
         try {
           const linkedinUserData = JSON.parse(storedLinkedinData);
           
-          // Merge LinkedIn data with existing user data
           const updatedUser = {
-            ...user, // Keep existing user data
-            ...linkedinUserData, // Add LinkedIn data
-            provider: user?.provider || 'email', // Keep original provider if exists
+            ...user,
+            ...linkedinUserData,
+            provider: user?.provider || 'email',
             linkedinConnected: true
           };
           
           login(updatedUser, linkedinUserData.linkedinAccessToken);
           sessionStorage.removeItem('linkedin_user_data');
-          console.log('LinkedIn connected successfully from sessionStorage!');
+          console.log('LinkedIn connected via sessionStorage fallback!');
           
-          // Clean URL after processing
+          // Clean URL
           window.history.replaceState({}, document.title, window.location.pathname);
-          return;
         } catch (error) {
           console.error('Error parsing LinkedIn data from sessionStorage:', error);
         }
       }
     }
-    
-    // Fallback: Handle LinkedIn connection from URL token (backup method)
-    const linkedinToken = params.get("linkedin_token");
-    const linkedinSuccess = params.get("linkedin_success");
-    if (linkedinSuccess === "true" && linkedinToken) {
-      try {
-        const linkedinUserData = JSON.parse(atob(linkedinToken));
-        
-        const updatedUser = {
-          ...user,
-          ...linkedinUserData,
-          provider: user?.provider || 'email',
-          linkedinConnected: true
-        };
-        
-        login(updatedUser, linkedinToken);
-        console.log('LinkedIn connected successfully from URL token!');
-        
-        // Clean URL after processing
-        window.history.replaceState({}, document.title, window.location.pathname);
-      } catch (error) {
-        console.error('Error processing LinkedIn token:', error);
-      }
-    }
-  }, []); // Empty dependency array to run only once
+  }, []);
 
   // Handle client selection from sidebar
   const handleClientSelect = (client) => {
@@ -154,7 +161,7 @@ const Dashboard = () => {
 
   // LinkedIn connect handler
   const handleLinkedInConnect = () => {
-    const clientId = '776rnhewhggkqz';
+    const clientId = '776rnhewhggkqz'; // Use the correct client ID from your .env
     const redirectUri = 'https://whizmedia-backend.onrender.com/user/auth/linkedin/callback';
     const scope = 'openid profile email';
     const state = Math.random().toString(36).substring(2, 15);
@@ -163,45 +170,38 @@ const Dashboard = () => {
     
     const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}`;
     
-    // Open in popup instead of redirecting main window
+    console.log('Opening LinkedIn popup...');
+    
+    // Open popup
     const popup = window.open(
       linkedinAuthUrl,
       'linkedin-auth',
-      'width=600,height=700,scrollbars=yes,resizable=yes'
+      'width=600,height=700,scrollbars=yes,resizable=yes,left=' + 
+      (window.screen.width / 2 - 300) + ',top=' + (window.screen.height / 2 - 350)
     );
     
-    // Listen for popup messages
-    const handleMessage = (event) => {
-      if (event.origin !== 'https://whizmedia-backend.onrender.com') return;
-      
-      if (event.data.success) {
-        const linkedinUserData = event.data.user;
-        const updatedUser = {
-          ...user,
-          ...linkedinUserData,
-          provider: user?.provider || 'email',
-          linkedinConnected: true
-        };
-        
-        login(updatedUser, event.data.token);
-        popup.close();
-        window.removeEventListener('message', handleMessage);
-      } else {
-        alert('LinkedIn connection failed: ' + event.data.error);
-        popup.close();
-        window.removeEventListener('message', handleMessage);
-      }
-    };
+    // Check if popup was blocked
+    if (!popup || popup.closed) {
+      alert('Popup blocked! Please allow popups for this site and try again.');
+      return;
+    }
     
-    window.addEventListener('message', handleMessage);
-    
-    // Handle popup being closed manually
+    // Monitor popup
     const checkClosed = setInterval(() => {
       if (popup.closed) {
         clearInterval(checkClosed);
-        window.removeEventListener('message', handleMessage);
+        console.log('LinkedIn popup closed');
       }
     }, 1000);
+    
+    // Timeout fallback
+    setTimeout(() => {
+      if (!popup.closed) {
+        popup.close();
+        clearInterval(checkClosed);
+        console.log('LinkedIn popup timed out');
+      }
+    }, 300000); // 5 minutes timeout
   };
 
   // Add this right after the user state updates
@@ -688,3 +688,51 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+
+const htmlResponse = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>LinkedIn Connected</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      text-align: center; 
+      padding: 50px; 
+      background: #f5f5f5; 
+      color: #333;
+    }
+    .success { color: #28a745; font-size: 18px; margin-bottom: 20px; }
+    .loading { color: #007bff; }
+  </style>
+</head>
+<body>
+  <div class="success">✓ LinkedIn Connected Successfully!</div>
+  <p class="loading">Connecting to your dashboard...</p>
+  <script>
+    try {
+      // Send data to parent window (main dashboard)
+      if (window.opener) {
+        window.opener.postMessage({
+          type: 'LINKEDIN_SUCCESS',
+          userData: ${JSON.stringify(userData)},
+          token: '${sessionToken}'
+        }, 'https://whizmedia-frontend.vercel.app');
+        
+        // Wait a moment then close popup
+        setTimeout(() => {
+          window.close();
+        }, 1000);
+      } else {
+        // Fallback: redirect to dashboard with sessionStorage
+        sessionStorage.setItem('linkedin_user_data', '${JSON.stringify(userData).replace(/'/g, "\\'")}');
+        window.location.href = "${frontendUrl}/dashboard?linkedin_connected=true";
+      }
+    } catch (error) {
+      console.error('Error sending LinkedIn data:', error);
+      // Final fallback: redirect to dashboard
+      window.location.href = "${frontendUrl}/dashboard";
+    }
+  </script>
+</body>
+</html>`;
