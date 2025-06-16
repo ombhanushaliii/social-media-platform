@@ -167,12 +167,12 @@ const Dashboard = () => {
     const redirectUri = 'https://whizmedia-backend.onrender.com/user/auth/linkedin/callback';
     const scope1 = 'r_liteprofile'
     const scope2 = 'w_member_social'
-    const scope = [scope1, scope2].join(' ');
+    const scope = `${scope1} ${scope2}`;
     const state = Math.random().toString(36).substring(2, 15);
 
     localStorage.setItem('linkedin_state', state);
 
-    const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}`;
+    const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&state=${encodeURIComponent(state)}`;
 
     console.log('Opening LinkedIn popup...');
     
