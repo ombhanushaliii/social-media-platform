@@ -52,61 +52,60 @@ const Dashboard = () => {
   // Listen for LinkedIn callback (token in URL) - FIXED useEffect
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const linkedinToken = params.get("linkedin_token");
-    const linkedinSuccess = params.get("linkedin_success");
     
-    if (linkedinSuccess === "true" && linkedinToken) {
-      try {
-        const linkedinUserData = JSON.parse(atob(linkedinToken));
-        
-        // Merge LinkedIn data with existing user data
-        const updatedUser = {
-          ...user, // Keep existing user data
-          ...linkedinUserData, // Add LinkedIn data
-          provider: user?.provider || 'email', // Keep original provider if exists
-          linkedinConnected: true
-        };
-        
-        login(updatedUser, linkedinToken);
-        
-        // Remove token from URL after processing
-        window.history.replaceState({}, document.title, window.location.pathname);
-        
-        console.log('LinkedIn connected successfully!');
-      } catch (error) {
-        console.error('Error processing LinkedIn token:', error);
-      }
-    }
-  }, []); // Remove user and login from dependencies to prevent infinite loop
-
-  // New useEffect for LinkedIn connection status
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    // Handle LinkedIn connection from sessionStorage (primary method)
     const linkedinConnected = params.get("linkedin_connected");
-    
     if (linkedinConnected === "true") {
-      // Check if we have stored LinkedIn data
       const storedLinkedinData = sessionStorage.getItem('linkedin_user_data');
       if (storedLinkedinData) {
         try {
           const linkedinUserData = JSON.parse(storedLinkedinData);
+          
+          // Merge LinkedIn data with existing user data
           const updatedUser = {
-            ...user,
-            ...linkedinUserData,
+            ...user, // Keep existing user data
+            ...linkedinUserData, // Add LinkedIn data
+            provider: user?.provider || 'email', // Keep original provider if exists
             linkedinConnected: true
           };
+          
           login(updatedUser, linkedinUserData.linkedinAccessToken);
           sessionStorage.removeItem('linkedin_user_data');
           console.log('LinkedIn connected successfully from sessionStorage!');
+          
+          // Clean URL after processing
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return;
         } catch (error) {
           console.error('Error parsing LinkedIn data from sessionStorage:', error);
         }
       }
-      
-      // Clean URL
-      window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, []);
+    
+    // Fallback: Handle LinkedIn connection from URL token (backup method)
+    const linkedinToken = params.get("linkedin_token");
+    const linkedinSuccess = params.get("linkedin_success");
+    if (linkedinSuccess === "true" && linkedinToken) {
+      try {
+        const linkedinUserData = JSON.parse(atob(linkedinToken));
+        
+        const updatedUser = {
+          ...user,
+          ...linkedinUserData,
+          provider: user?.provider || 'email',
+          linkedinConnected: true
+        };
+        
+        login(updatedUser, linkedinToken);
+        console.log('LinkedIn connected successfully from URL token!');
+        
+        // Clean URL after processing
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch (error) {
+        console.error('Error processing LinkedIn token:', error);
+      }
+    }
+  }, []); // Empty dependency array to run only once
 
   // Handle client selection from sidebar
   const handleClientSelect = (client) => {
@@ -205,6 +204,12 @@ const Dashboard = () => {
     }, 1000);
   };
 
+  // Add this right after the user state updates
+  useEffect(() => {
+    console.log('Current user state:', user);
+    console.log('LinkedIn access token present:', !!user?.linkedinAccessToken);
+  }, [user]);
+
   return (
     <div 
       className={`flex flex-col h-screen ${themeClasses.bg} ${themeClasses.text} transition-all duration-300`}
@@ -217,7 +222,7 @@ const Dashboard = () => {
             <div className="flex items-center space-x-4">
               <h1 className="text-xl font-bold text-blue-600">Whizmedia</h1>
               
-              {/* LinkedIn Connection Status - MOVED TO HEADER */}
+              {/* LinkedIn Connection Status - In the header */}
               {user?.linkedinAccessToken ? (
                 <div className="flex items-center space-x-2 px-3 py-1 bg-blue-100 dark:bg-blue-900 rounded-full">
                   <Linkedin className="w-4 h-4 text-blue-600" />
