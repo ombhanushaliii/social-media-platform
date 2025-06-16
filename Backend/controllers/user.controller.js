@@ -220,6 +220,8 @@ const linkedinPost = async (req, res) => {
   try {
     const { content, linkedinAccessToken, authorId } = req.body;
 
+    console.log('Received LinkedIn post request:', { content, authorId, hasToken: !!linkedinAccessToken });
+
     if (!linkedinAccessToken) {
       return res.status(400).json({
         error: 'LinkedIn access token required',
@@ -313,16 +315,21 @@ const linkedinPost = async (req, res) => {
       ];
     }
 
+    console.log('Posting to LinkedIn UGC API:', JSON.stringify(postData, null, 2));
+
     const linkedinResponse = await axios.post(
       'https://api.linkedin.com/v2/ugcPosts',
       postData,
       {
         headers: {
           'Authorization': `Bearer ${linkedinAccessToken}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-Restli-Protocol-Version': '2.0.0'
         }
       }
     );
+
+    console.log('LinkedIn API response:', linkedinResponse.status, linkedinResponse.data, linkedinResponse.headers);
 
     // LinkedIn returns 201 Created and X-RestLi-Id header with post id
     const postId = linkedinResponse.headers['x-restli-id'] || linkedinResponse.data.id;
@@ -334,7 +341,7 @@ const linkedinPost = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('LinkedIn posting error:', error.response?.data || error.message);
+    console.error('LinkedIn posting error:', error.response?.data || error.message, error.response?.status);
     res.status(500).json({
       error: 'Failed to post to LinkedIn',
       details: error.response?.data || error.message
