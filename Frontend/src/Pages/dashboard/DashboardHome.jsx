@@ -165,7 +165,7 @@ const Dashboard = () => {
   const handleLinkedInConnect = () => {
     const clientId = '776rnhewhggkqz'; // Use the correct client ID from your .env
     const redirectUri = 'https://whizmedia-backend.onrender.com/user/auth/linkedin/callback';
-    const scope = 'r_liteprofile r_emailaddress w_member_social';
+    const scope = 'r_liteprofile w_member_social';
     const state = Math.random().toString(36).substring(2, 15);
     
     localStorage.setItem('linkedin_state', state);
