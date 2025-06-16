@@ -126,6 +126,7 @@ const linkedinCallback = async (req, res) => {
 
     // Create a session token
     const sessionToken = Buffer.from(JSON.stringify(userData)).toString('base64');
+    console.log("hello, scope here: ", userData.scope);
 
     // Send HTML response with sessionStorage and redirect
     const htmlResponse = `
