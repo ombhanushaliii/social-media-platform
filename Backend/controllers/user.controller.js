@@ -226,45 +226,59 @@ const linkedinPost = async (req, res) => {
       });
     }
 
+    if (!authorId) {
+      return res.status(400).json({
+        error: 'Missing authorId',
+        message: 'LinkedIn user ID (authorId) is required'
+      });
+    }
+
     let mediaAsset = null;
 
     // If there's an image, upload it to LinkedIn first
     if (req.file) {
-      console.log('Uploading image to LinkedIn...');
-      
-      // Step 1: Register upload for LinkedIn
-      const registerResponse = await axios.post('https://api.linkedin.com/v2/assets?action=registerUpload', {
-        registerUploadRequest: {
-          recipes: ["urn:li:digitalmediaRecipe:feedshare-image"],
-          owner: `urn:li:person:${authorId}`,
-          serviceRelationships: [{
-            relationshipType: "OWNER",
-            identifier: "urn:li:userGeneratedContent"
-          }]
+      // 1. Register upload
+      const registerResponse = await axios.post(
+        'https://api.linkedin.com/v2/assets?action=registerUpload',
+        {
+          registerUploadRequest: {
+            recipes: ["urn:li:digitalmediaRecipe:feedshare-image"],
+            owner: `urn:li:person:${authorId}`,
+            serviceRelationships: [
+              {
+                relationshipType: "OWNER",
+                identifier: "urn:li:userGeneratedContent"
+              }
+            ]
+          }
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${linkedinAccessToken}`,
+            'Content-Type': 'application/json'
+          }
         }
-      }, {
-        headers: {
-          'Authorization': `Bearer ${linkedinAccessToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      );
 
       const uploadUrl = registerResponse.data.value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'].uploadUrl;
       const asset = registerResponse.data.value.asset;
 
-      // Step 2: Upload the actual image
-      await axios.put(uploadUrl, req.file.buffer, {
-        headers: {
-          'Content-Type': 'application/octet-stream',
-          'Authorization': `Bearer ${linkedinAccessToken}`
+      // 2. Upload the actual image
+      await axios.post(
+        uploadUrl,
+        req.file.buffer,
+        {
+          headers: {
+            'Authorization': `Bearer ${linkedinAccessToken}`,
+            'Content-Type': 'application/octet-stream'
+          }
         }
-      });
+      );
 
-      mediaAsset = asset;
-      console.log('Image uploaded to LinkedIn successfully');
+      mediaAsset = asset; // e.g. "urn:li:digitalmediaAsset:xxxx"
     }
 
-    // Step 3: Create the LinkedIn post
+    // 3. Create the LinkedIn post
     const postData = {
       author: `urn:li:person:${authorId}`,
       lifecycleState: "PUBLISHED",
@@ -283,30 +297,37 @@ const linkedinPost = async (req, res) => {
 
     // Add media if present
     if (mediaAsset) {
-      postData.specificContent["com.linkedin.ugc.ShareContent"].media = [{
-        status: "READY",
-        description: {
-          text: "Image"
-        },
-        media: mediaAsset,
-        title: {
-          text: "Post Image"
+      postData.specificContent["com.linkedin.ugc.ShareContent"].media = [
+        {
+          status: "READY",
+          description: {
+            text: "Image"
+          },
+          media: mediaAsset,
+          title: {
+            text: "Post Image"
+          }
         }
-      }];
+      ];
     }
 
-    const linkedinResponse = await axios.post('https://api.linkedin.com/v2/ugcPosts', postData, {
-      headers: {
-        'Authorization': `Bearer ${linkedinAccessToken}`,
-        'Content-Type': 'application/json'
+    const linkedinResponse = await axios.post(
+      'https://api.linkedin.com/v2/ugcPosts',
+      postData,
+      {
+        headers: {
+          'Authorization': `Bearer ${linkedinAccessToken}`,
+          'Content-Type': 'application/json'
+        }
       }
-    });
+    );
 
-    console.log('LinkedIn post created successfully');
+    // LinkedIn returns 201 Created and X-RestLi-Id header with post id
+    const postId = linkedinResponse.headers['x-restli-id'] || linkedinResponse.data.id;
 
     res.json({
       success: true,
-      linkedinPostId: linkedinResponse.data.id,
+      linkedinPostId: postId,
       message: 'Post published successfully to LinkedIn'
     });
 
