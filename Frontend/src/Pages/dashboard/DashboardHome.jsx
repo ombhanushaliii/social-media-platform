@@ -79,6 +79,30 @@ const Dashboard = () => {
     }
   }, []); // Remove user and login from dependencies to prevent infinite loop
 
+  // New useEffect for LinkedIn connection status
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const linkedinConnected = params.get("linkedin_connected");
+    
+    if (linkedinConnected === "true") {
+      // Check if we have stored LinkedIn data
+      const storedLinkedinData = sessionStorage.getItem('linkedin_user_data');
+      if (storedLinkedinData) {
+        const linkedinUserData = JSON.parse(storedLinkedinData);
+        const updatedUser = {
+          ...user,
+          ...linkedinUserData,
+          linkedinConnected: true
+        };
+        login(updatedUser, linkedinUserData.linkedinAccessToken);
+        sessionStorage.removeItem('linkedin_user_data');
+      }
+      
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   // Handle client selection from sidebar
   const handleClientSelect = (client) => {
     setSelectedClient(client);
@@ -129,10 +153,51 @@ const Dashboard = () => {
     const clientId = '776rnhewhggkqz';
     const redirectUri = 'https://whizmedia-backend.onrender.com/user/auth/linkedin/callback';
     const scope = 'openid profile email';
-    const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const state = Math.random().toString(36).substring(2, 15);
+    
     localStorage.setItem('linkedin_state', state);
+    
     const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}`;
-    window.location.href = linkedinAuthUrl;
+    
+    // Open in popup instead of redirecting main window
+    const popup = window.open(
+      linkedinAuthUrl,
+      'linkedin-auth',
+      'width=600,height=700,scrollbars=yes,resizable=yes'
+    );
+    
+    // Listen for popup messages
+    const handleMessage = (event) => {
+      if (event.origin !== 'https://whizmedia-backend.onrender.com') return;
+      
+      if (event.data.success) {
+        const linkedinUserData = event.data.user;
+        const updatedUser = {
+          ...user,
+          ...linkedinUserData,
+          provider: user?.provider || 'email',
+          linkedinConnected: true
+        };
+        
+        login(updatedUser, event.data.token);
+        popup.close();
+        window.removeEventListener('message', handleMessage);
+      } else {
+        alert('LinkedIn connection failed: ' + event.data.error);
+        popup.close();
+        window.removeEventListener('message', handleMessage);
+      }
+    };
+    
+    window.addEventListener('message', handleMessage);
+    
+    // Handle popup being closed manually
+    const checkClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkClosed);
+        window.removeEventListener('message', handleMessage);
+      }
+    }, 1000);
   };
 
   return (

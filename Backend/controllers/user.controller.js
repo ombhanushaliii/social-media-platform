@@ -132,12 +132,21 @@ const linkedinCallback = async (req, res) => {
     // Create a session token
     const sessionToken = Buffer.from(JSON.stringify(userData)).toString('base64');
 
-    // Redirect to frontend with user data
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    const redirectUrl = `${frontendUrl}/dashboard?linkedin_token=${sessionToken}&linkedin_success=true`;
-    
-    console.log('Redirecting to frontend successfully');
-    res.redirect(redirectUrl);
+    // Instead of redirecting to dashboard, send a simple HTML page that communicates with parent
+    const htmlResponse = `
+    <!DOCTYPE html>
+    <html>
+    <head><title>LinkedIn Connected</title></head>
+    <body>
+      <script>
+        // Store in sessionStorage and redirect
+        sessionStorage.setItem('linkedin_user_data', '${JSON.stringify(userData)}');
+        window.location.href = "${frontendUrl}/dashboard?linkedin_connected=true";
+      </script>
+    </body>
+    </html>`;
+
+    res.send(htmlResponse);
 
   } catch (error) {
     console.error('LinkedIn OAuth error details:', {
