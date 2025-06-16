@@ -134,22 +134,42 @@ const linkedinCallback = async (req, res) => {
     <head>
       <title>LinkedIn Connected</title>
       <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f5f5f5; }
-        .success { color: #28a745; font-size: 18px; }
+        body { 
+          font-family: Arial, sans-serif; 
+          text-align: center; 
+          padding: 50px; 
+          background: #f5f5f5; 
+          color: #333;
+        }
+        .success { color: #28a745; font-size: 18px; margin-bottom: 20px; }
         .loading { color: #007bff; }
       </style>
     </head>
     <body>
       <div class="success">✓ LinkedIn Connected Successfully!</div>
-      <p class="loading">Redirecting to dashboard...</p>
+      <p class="loading">Connecting to your dashboard...</p>
       <script>
         try {
-          // Store in sessionStorage and redirect
-          sessionStorage.setItem('linkedin_user_data', '${JSON.stringify(userData).replace(/'/g, "\\'")}');
-          window.location.href = "${frontendUrl}/dashboard?linkedin_connected=true";
+          // Send data to parent window (main dashboard)
+          if (window.opener) {
+            window.opener.postMessage({
+              type: 'LINKEDIN_SUCCESS',
+              userData: ${JSON.stringify(userData)},
+              token: '${sessionToken}'
+            }, 'https://whizmedia-frontend.vercel.app');
+            
+            // Wait a moment then close popup
+            setTimeout(() => {
+              window.close();
+            }, 1000);
+          } else {
+            // Fallback: redirect to dashboard with sessionStorage
+            sessionStorage.setItem('linkedin_user_data', '${JSON.stringify(userData).replace(/'/g, "\\'")}');
+            window.location.href = "${frontendUrl}/dashboard?linkedin_connected=true";
+          }
         } catch (error) {
-          console.error('Error storing LinkedIn data:', error);
-          // Fallback: redirect to dashboard anyway
+          console.error('Error sending LinkedIn data:', error);
+          // Final fallback: redirect to dashboard
           window.location.href = "${frontendUrl}/dashboard";
         }
       </script>
