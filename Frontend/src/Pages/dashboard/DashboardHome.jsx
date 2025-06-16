@@ -37,6 +37,8 @@ const Dashboard = () => {
     }
   ]);
 
+  const [expandedClientId, setExpandedClientId] = useState(null);
+
   // Theme classes
   const themeClasses = {
     bg: isDarkMode ? 'bg-gray-900' : 'bg-gray-50',
@@ -223,28 +225,7 @@ const Dashboard = () => {
               <h1 className="text-xl font-bold text-blue-600">Whizmedia</h1>
               
               {/* LinkedIn Connection Status - In the header */}
-              {user?.linkedinAccessToken ? (
-                <div className="flex items-center space-x-2 px-3 py-1 bg-blue-100 dark:bg-blue-900 rounded-full">
-                  <Linkedin className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs font-medium text-blue-600">
-                    {user.name || user.firstName || "LinkedIn User"}
-                  </span>
-                  <button
-                    onClick={() => setShowLinkedInCreator(true)}
-                    className="ml-2 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-all"
-                  >
-                    Post
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={handleLinkedInConnect}
-                  className="flex items-center gap-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-full font-medium transition-all"
-                >
-                  <Linkedin className="w-4 h-4" />
-                  Connect LinkedIn
-                </button>
-              )}
+
             </div>
 
             {/* Navigation Items */}
@@ -316,33 +297,56 @@ const Dashboard = () => {
           </div>
           <div className="overflow-y-auto flex-grow">
             {clients.map(client => (
-              <div 
-                key={client.id}
-                onClick={() => handleClientSelect(client)}
-                className={`p-4 cursor-pointer ${
-                  selectedClient?.id === client.id 
-                    ? "bg-blue-100 dark:bg-blue-900" 
-                    : `${themeClasses.hover}`
-                } flex items-center space-x-3 border-b border-gray-100 dark:border-gray-800`}
-              >
-                <div className={`w-10 h-10 ${themeClasses.clientIcon} rounded-full flex items-center justify-center flex-shrink-0`}>
-                  <span className="font-medium text-sm">
-                    {client.name.charAt(0)}
-                  </span>
+              <div key={client.id}>
+                {/* Client header row */}
+                <div
+                  className={`p-4 cursor-pointer flex items-center space-x-3 border-b border-gray-100 dark:border-gray-800 transition-colors duration-150 ${
+                    selectedClient?.id === client.id || expandedClientId === client.id
+                      ? isDarkMode
+                        ? 'bg-[#23293a]' // dark blue-gray for selected in dark mode
+                        : 'bg-blue-100' // light blue for selected in light mode
+                      : isDarkMode
+                        ? 'hover:bg-gray-800'
+                        : 'hover:bg-gray-100'
+                  }`}
+                  onClick={() => setExpandedClientId(expandedClientId === client.id ? null : client.id)}
+                >
+                  <div className={`w-10 h-10 ${themeClasses.clientIcon} rounded-full flex items-center justify-center flex-shrink-0`}>
+                    <span className="font-medium text-sm">{client.name.charAt(0)}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`font-medium text-sm truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{client.name}</p>
+                  </div>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${expandedClientId === client.id ? 'rotate-180' : ''} ${isDarkMode ? 'text-white' : 'text-gray-900'}`} />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">{client.name}</p>
-                  <p className={`${themeClasses.textSecondary} text-xs truncate`}>
-                    {client.platforms.join(', ')}
-                  </p>
-                </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  client.status === 'Active' 
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                }`}>
-                  {client.status}
-                </span>
+                {/* Dropdown for this client */}
+                {expandedClientId === client.id && (
+                  <div className="px-6 py-4 bg-white dark:bg-[#23293a] border-b border-gray-200 dark:border-gray-700 shadow-md rounded-b-lg flex items-center space-x-3">
+                    {/* LinkedIn Button Logic (only here) */}
+                    {user?.linkedinAccessToken ? (
+                      <div className="flex items-center space-x-2 px-3 py-1 bg-blue-100 dark:bg-blue-900 rounded-full">
+                        <Linkedin className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        <span className="text-xs font-medium text-blue-600 dark:text-blue-200">
+                          {user.name || user.firstName || "LinkedIn User"}
+                        </span>
+                        <button
+                          onClick={() => setShowLinkedInCreator(true)}
+                          className="ml-2 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-all shadow"
+                        >
+                          Post
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={handleLinkedInConnect}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-full font-medium transition-all shadow border border-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400 dark:text-white dark:border-blue-400"
+                      >
+                        <Linkedin className="w-5 h-5 text-white" />
+                        Connect LinkedIn
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
