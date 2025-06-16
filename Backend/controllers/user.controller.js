@@ -19,16 +19,17 @@ const linkedinCallback = async (req, res) => {
       error_description: error_description || 'none'
     });
 
+    // Define frontendUrl at the beginning of the function
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
     if (error) {
       console.error('LinkedIn OAuth error:', error, error_description);
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       const errorUrl = `${frontendUrl}/auth/linkedin/callback?error=${error}&message=${encodeURIComponent(error_description || 'LinkedIn authentication failed')}`;
       return res.redirect(errorUrl);
     }
 
     if (!code) {
       console.error('No authorization code received');
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       const errorUrl = `${frontendUrl}/auth/linkedin/callback?error=no_code&message=${encodeURIComponent('Authorization code not provided')}`;
       return res.redirect(errorUrl);
     }
@@ -57,13 +58,6 @@ const linkedinCallback = async (req, res) => {
     console.log("Client Secret:", process.env.LINKEDIN_CLIENT_SECRET);
     console.log("Redirect URI:", process.env.LINKEDIN_REDIRECT_URI);
 
-    // Step 3: Exchange authorization code for access token
-    // Use credentials as-is, no trimming or encoding
-    const requestBody = `grant_type=authorization_code&code=${code}&client_id=${clientId}&client_secret=${clientSecret}&redirect_uri=${redirectUri}`;
-
-    console.log('Making token request to LinkedIn...');
-    console.log('Request body format:', requestBody.replace(clientSecret, 'HIDDEN'));
-
     // Use URLSearchParams for proper encoding
     const data = new URLSearchParams({
       grant_type: 'authorization_code',
@@ -73,7 +67,8 @@ const linkedinCallback = async (req, res) => {
       redirect_uri: redirectUri,
     });
 
-    console.log('Raw request body:', data.toString());
+    console.log('Making token request to LinkedIn...');
+    console.log('Raw request body:', data.toString().replace(clientSecret, 'HIDDEN'));
 
     const tokenResponse = await axios.post(
       'https://www.linkedin.com/oauth/v2/accessToken',
@@ -132,21 +127,37 @@ const linkedinCallback = async (req, res) => {
     // Create a session token
     const sessionToken = Buffer.from(JSON.stringify(userData)).toString('base64');
 
-    // Instead of redirecting to dashboard, send a simple HTML page that communicates with parent
+    // Send HTML response with sessionStorage and redirect
     const htmlResponse = `
     <!DOCTYPE html>
     <html>
-    <head><title>LinkedIn Connected</title></head>
+    <head>
+      <title>LinkedIn Connected</title>
+      <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f5f5f5; }
+        .success { color: #28a745; font-size: 18px; }
+        .loading { color: #007bff; }
+      </style>
+    </head>
     <body>
+      <div class="success">✓ LinkedIn Connected Successfully!</div>
+      <p class="loading">Redirecting to dashboard...</p>
       <script>
-        // Store in sessionStorage and redirect
-        sessionStorage.setItem('linkedin_user_data', '${JSON.stringify(userData)}');
-        window.location.href = "${frontendUrl}/dashboard?linkedin_connected=true";
+        try {
+          // Store in sessionStorage and redirect
+          sessionStorage.setItem('linkedin_user_data', '${JSON.stringify(userData).replace(/'/g, "\\'")}');
+          window.location.href = "${frontendUrl}/dashboard?linkedin_connected=true";
+        } catch (error) {
+          console.error('Error storing LinkedIn data:', error);
+          // Fallback: redirect to dashboard anyway
+          window.location.href = "${frontendUrl}/dashboard";
+        }
       </script>
     </body>
     </html>`;
 
     res.send(htmlResponse);
+    console.log('Redirecting to frontend successfully');
 
   } catch (error) {
     console.error('LinkedIn OAuth error details:', {

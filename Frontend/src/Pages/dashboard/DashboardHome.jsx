@@ -88,14 +88,19 @@ const Dashboard = () => {
       // Check if we have stored LinkedIn data
       const storedLinkedinData = sessionStorage.getItem('linkedin_user_data');
       if (storedLinkedinData) {
-        const linkedinUserData = JSON.parse(storedLinkedinData);
-        const updatedUser = {
-          ...user,
-          ...linkedinUserData,
-          linkedinConnected: true
-        };
-        login(updatedUser, linkedinUserData.linkedinAccessToken);
-        sessionStorage.removeItem('linkedin_user_data');
+        try {
+          const linkedinUserData = JSON.parse(storedLinkedinData);
+          const updatedUser = {
+            ...user,
+            ...linkedinUserData,
+            linkedinConnected: true
+          };
+          login(updatedUser, linkedinUserData.linkedinAccessToken);
+          sessionStorage.removeItem('linkedin_user_data');
+          console.log('LinkedIn connected successfully from sessionStorage!');
+        } catch (error) {
+          console.error('Error parsing LinkedIn data from sessionStorage:', error);
+        }
       }
       
       // Clean URL
