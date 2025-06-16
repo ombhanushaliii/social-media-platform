@@ -256,7 +256,8 @@ const linkedinPost = async (req, res) => {
         {
           headers: {
             'Authorization': `Bearer ${linkedinAccessToken}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-Restli-Protocol-Version': '2.0.0'
           }
         }
       );
