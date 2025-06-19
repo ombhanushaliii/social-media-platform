@@ -263,17 +263,6 @@ const Dashboard = () => {
               >
                 <LogOut className="h-5 w-5" />
               </button>
-
-              {/* Messaging Button */}
-              {user?.linkedinAccessToken && (
-                <button
-                  onClick={() => setShowMessagingCenter(true)}
-                  className="flex items-center gap-2 px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded-full font-medium transition-all"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  Messages
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -334,20 +323,37 @@ const Dashboard = () => {
                 </div>
                 {/* Dropdown for this client */}
                 {expandedClientId === client.id && (
-                  <div className="px-6 py-4 bg-white dark:bg-[#23293a] border-b border-gray-200 dark:border-gray-700 shadow-md rounded-b-lg flex items-center space-x-3">
-                    {/* LinkedIn Button Logic (only here) */}
+                  <div className="px-6 py-4 bg-white dark:bg-[#23293a] border-b border-gray-200 dark:border-gray-700 shadow-md rounded-b-lg space-y-3">
+                    
+                    {/* LinkedIn Connection Status */}
                     {user?.linkedinAccessToken ? (
-                      <div className="flex items-center space-x-2 px-3 py-1 bg-blue-100 dark:bg-blue-900 rounded-full">
-                        <Linkedin className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                        <span className="text-xs font-medium text-blue-600 dark:text-blue-200">
-                          {user.name || user.firstName || "LinkedIn User"}
-                        </span>
-                        <button
-                          onClick={() => setShowLinkedInCreator(true)}
-                          className="ml-2 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-all shadow"
-                        >
-                          Post
-                        </button>
+                      <div className="space-y-2">
+                        {/* LinkedIn Connected Status */}
+                        <div className="flex items-center space-x-2 px-3 py-1 bg-blue-100 dark:bg-blue-900 rounded-full">
+                          <Linkedin className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                          <span className="text-xs font-medium text-blue-600 dark:text-blue-200">
+                            {user.name || user.firstName || "LinkedIn User"}
+                          </span>
+                        </div>
+                        
+                        {/* Action Buttons */}
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => setShowLinkedInCreator(true)}
+                            className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-all shadow"
+                          >
+                            <Linkedin className="w-4 h-4" />
+                            Post
+                          </button>
+                          
+                          <button
+                            onClick={() => setShowMessagingCenter(true)}
+                            className="flex items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-all shadow"
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                            Messages
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <button
