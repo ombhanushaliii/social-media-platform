@@ -1,5 +1,5 @@
 const express = require('express');
-const { post, linkedinPost, linkedinCallback } = require('../controllers/user.controller');
+const { post, linkedinPost, linkedinCallback, getConversations, sendMessage } = require('../controllers/user.controller');
 const router = express.Router();
 const upload = require('../multer');
 
@@ -9,6 +9,10 @@ router.post('/linkedin/post', upload.single('image'), linkedinPost); // LinkedIn
 
 // LinkedIn OAuth routes
 router.get('/auth/linkedin/callback', linkedinCallback);
+
+// New messaging routes
+router.get('/messages/conversations', getConversations);
+router.post('/messages/send', upload.single('attachment'), sendMessage);
 
 // Test route for LinkedIn configuration
 router.get('/test/linkedin-config', (req, res) => {

@@ -409,4 +409,167 @@ const post = async (req, res) => {
   }
 };
 
-module.exports = { post, linkedinPost, linkedinCallback };
+// Get conversations for a user
+const getConversations = async (req, res) => {
+  try {
+    const { linkedinAccessToken, authorId } = req.query;
+
+    if (!linkedinAccessToken) {
+      return res.status(400).json({
+        error: 'LinkedIn access token required',
+        message: 'Please authenticate with LinkedIn first'
+      });
+    }
+
+    // Note: LinkedIn doesn't provide a direct API to get conversations
+    // This would typically require storing conversation data locally
+    // For now, return empty array as placeholder
+    res.json({
+      success: true,
+      conversations: []
+    });
+
+  } catch (error) {
+    console.error('Error fetching conversations:', error.response?.data || error.message);
+    res.status(500).json({
+      error: 'Failed to fetch conversations',
+      details: error.response?.data || error.message
+    });
+  }
+};
+
+// Send a new message
+const sendMessage = async (req, res) => {
+  try {
+    const { recipients, subject, body, linkedinAccessToken, authorId, thread } = req.body;
+
+    if (!linkedinAccessToken) {
+      return res.status(400).json({
+        error: 'LinkedIn access token required',
+        message: 'Please authenticate with LinkedIn first'
+      });
+    }
+
+    if (!body || body.trim() === '') {
+      return res.status(400).json({
+        error: 'Message body required',
+        message: 'Please enter a message'
+      });
+    }
+
+    let attachments = [];
+
+    // Handle file attachment if present
+    if (req.file) {
+      // Register upload for attachment
+      const registerResponse = await axios.post(
+        'https://api.linkedin.com/v2/assets?action=registerUpload',
+        {
+          registerUploadRequest: {
+            owner: `urn:li:person:${authorId}`,
+            recipes: ["urn:li:digitalmediaRecipe:messaging-attachment"],
+            serviceRelationships: [
+              {
+                identifier: "urn:li:userGeneratedContent",
+                relationshipType: "OWNER"
+              }
+            ]
+          }
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${linkedinAccessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const uploadUrl = registerResponse.data.value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'].uploadUrl;
+      const asset = registerResponse.data.value.asset;
+
+      // Upload the file
+      await axios.post(
+        uploadUrl,
+        req.file.buffer,
+        {
+          headers: {
+            'Authorization': `Bearer ${linkedinAccessToken}`,
+            'Content-Type': 'application/octet-stream'
+          }
+        }
+      );
+
+      attachments.push(asset);
+    }
+
+    // Prepare message data
+    const messageData = {
+      body: body,
+      messageType: "MEMBER_TO_MEMBER"
+    };
+
+    // Add recipients for new conversation or thread for reply
+    if (thread) {
+      messageData.thread = thread;
+    } else if (recipients && recipients.length > 0) {
+      messageData.recipients = recipients.map(id => `urn:li:person:${id}`);
+      if (subject) {
+        messageData.subject = subject;
+      }
+    } else {
+      return res.status(400).json({
+        error: 'Recipients or thread required',
+        message: 'Please specify recipients for new message or thread for reply'
+      });
+    }
+
+    // Add attachments if any
+    if (attachments.length > 0) {
+      messageData.attachments = attachments;
+    }
+
+    console.log('Sending message to LinkedIn:', JSON.stringify(messageData, null, 2));
+
+    // Send message via LinkedIn API
+    const response = await axios.post(
+      'https://api.linkedin.com/v2/messages',
+      messageData,
+      {
+        headers: {
+          'Authorization': `Bearer ${linkedinAccessToken}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    // Extract thread and message ID from response headers
+    const locationHeader = response.headers['x-linkedin-id'];
+    let threadId = null;
+    let messageId = null;
+
+    if (locationHeader) {
+      // Parse the location header to extract IDs
+      const matches = locationHeader.match(/thread=([^,]+).*id=([^}]+)/);
+      if (matches) {
+        threadId = matches[1];
+        messageId = matches[2];
+      }
+    }
+
+    res.json({
+      success: true,
+      messageId: messageId,
+      threadId: threadId,
+      message: 'Message sent successfully'
+    });
+
+  } catch (error) {
+    console.error('Error sending message:', error.response?.data || error.message);
+    res.status(500).json({
+      error: 'Failed to send message',
+      details: error.response?.data || error.message
+    });
+  }
+};
+
+module.exports = { post, linkedinPost, linkedinCallback, getConversations, sendMessage };

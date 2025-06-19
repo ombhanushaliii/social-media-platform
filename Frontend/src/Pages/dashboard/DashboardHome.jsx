@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { LogOut, Home, Users, UserCheck, Calendar, Sun, Moon, BarChart3, FileText, Plus, Instagram, Linkedin, Clock, CheckCircle, ChevronDown } from "lucide-react";
+import { LogOut, Home, Users, UserCheck, Calendar, Sun, Moon, BarChart3, FileText, Plus, Instagram, Linkedin, Clock, CheckCircle, ChevronDown, MessageSquare } from "lucide-react";
 import PostCreator from "../../Components/PostCreator";
 import LinkedInPostCreator from "../../Components/LinkedInPostCreator";
+import MessagingCenter from "../../Components/MessagingCenter";
 import { useAuth } from "../../Context/AuthContext";
 
 const navItems = [
@@ -19,6 +20,7 @@ const Dashboard = () => {
   const [showPostCreator, setShowPostCreator] = useState(false);
   const [showLinkedInCreator, setShowLinkedInCreator] = useState(false);
   const [showPlatformDropdown, setShowPlatformDropdown] = useState(false);
+  const [showMessagingCenter, setShowMessagingCenter] = useState(false);
   const [posts, setPosts] = useState([]);
   const sidebarRef = useRef(null);
   const { user, login } = useAuth();
@@ -261,6 +263,17 @@ const Dashboard = () => {
               >
                 <LogOut className="h-5 w-5" />
               </button>
+
+              {/* Messaging Button */}
+              {user?.linkedinAccessToken && (
+                <button
+                  onClick={() => setShowMessagingCenter(true)}
+                  className="flex items-center gap-2 px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded-full font-medium transition-all"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  Messages
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -685,6 +698,13 @@ const Dashboard = () => {
           isDarkMode={isDarkMode}
           onClose={() => setShowLinkedInCreator(false)}
           onPostSuccess={handlePostSuccess}
+        />
+      )}
+
+      {showMessagingCenter && (
+        <MessagingCenter
+          isDarkMode={isDarkMode}
+          onClose={() => setShowMessagingCenter(false)}
         />
       )}
     </div>
