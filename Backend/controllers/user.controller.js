@@ -572,4 +572,181 @@ const sendMessage = async (req, res) => {
   }
 };
 
-module.exports = { post, linkedinPost, linkedinCallback, getConversations, sendMessage };
+// Handle Lookup API - Find LinkedIn users by email
+const lookupLinkedInUserByEmail = async (req, res) => {
+  try {
+    const { email, linkedinAccessToken } = req.query;
+
+    if (!linkedinAccessToken) {
+      return res.status(400).json({
+        error: 'LinkedIn access token required',
+        message: 'Please authenticate with LinkedIn first'
+      });
+    }
+
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({
+        error: 'Valid email address required',
+        message: 'Please provide a valid email address'
+      });
+    }
+
+    // Required headers for Handle Lookup API
+    const headers = {
+      'Authorization': `Bearer ${linkedinAccessToken}`,
+      'Content-Type': 'application/json',
+      'X-Forwarded-For': req.ip || '127.0.0.1', // Client IP
+      'Caller-Account-Age': '3', // Account age bucket (assuming 6+ months old account)
+      'Caller-Device-UUID': 'placeholder-uuid-not-collected' // Placeholder as per LinkedIn docs
+    };
+
+    console.log('Looking up LinkedIn user by email:', email);
+
+    // Call LinkedIn Handle Lookup API with profile projection
+    const response = await axios.get(
+      `https://api.linkedin.com/v2/clientAwareMemberHandles?q=handleString&handleString=${encodeURIComponent(email)}&projection=(elements*(member~))`,
+      { headers }
+    );
+
+    if (response.data.elements && response.data.elements.length > 0) {
+      const userData = response.data.elements[0];
+      const member = userData.member;
+      const profile = userData['member~'];
+
+      // Extract Person ID from URN (urn:li:person:ID)
+      const personId = member.replace('urn:li:person:', '')
+
+      // Format the response
+      const formattedUser = {
+        id: personId,
+        urn: member,
+        name: profile.localizedFirstName || 'LinkedIn User',
+        firstName: profile.localizedFirstName,
+        headline: profile.headline?.localized?.en_US || '',
+        email: email
+      };
+
+      res.json({
+        success: true,
+        user: formattedUser
+      });
+    } else {
+      res.json({
+        success: false,
+        message: 'No LinkedIn profile found for this email address'
+      });
+    }
+
+  } catch (error) {
+    console.error('LinkedIn user lookup error:', error.response?.data || error.message);
+    
+    // Handle specific LinkedIn API errors
+    if (error.response?.status === 404) {
+      return res.json({
+        success: false,
+        message: 'No LinkedIn profile found for this email address'
+      });
+    }
+    
+    if (error.response?.status === 403) {
+      return res.status(403).json({
+        error: 'Access denied',
+        message: 'Your application does not have permission to use the Handle Lookup API'
+      });
+    }
+
+    res.status(500).json({
+      error: 'Failed to lookup LinkedIn user',
+      details: error.response?.data || error.message
+    });
+  }
+};
+
+// Batch lookup for multiple emails
+const lookupLinkedInUsersByEmails = async (req, res) => {
+  try {
+    const { emails, linkedinAccessToken } = req.body;
+
+    if (!linkedinAccessToken) {
+      return res.status(400).json({
+        error: 'LinkedIn access token required',
+        message: 'Please authenticate with LinkedIn first'
+      });
+    }
+
+    if (!emails || !Array.isArray(emails) || emails.length === 0) {
+      return res.status(400).json({
+        error: 'Email addresses required',
+        message: 'Please provide an array of email addresses'
+      });
+    }
+
+    // Validate emails
+    const validEmails = emails.filter(email => email && email.includes('@'));
+    if (validEmails.length === 0) {
+      return res.status(400).json({
+        error: 'Valid email addresses required',
+        message: 'Please provide valid email addresses'
+      });
+    }
+
+    const headers = {
+      'Authorization': `Bearer ${linkedinAccessToken}`,
+      'Content-Type': 'application/json',
+      'X-Forwarded-For': req.ip || '127.0.0.1',
+      'Caller-Account-Age': '3',
+      'Caller-Device-UUID': 'placeholder-uuid-not-collected'
+    };
+
+    // Build query string for multiple emails
+    const emailParams = validEmails.map(email => `handleStrings=${encodeURIComponent(email)}`).join('&');
+    const url = `https://api.linkedin.com/v2/clientAwareMemberHandles?q=handleStrings&${emailParams}&projection=(elements*(member~))`;
+
+    console.log('Looking up multiple LinkedIn users by emails:', validEmails);
+
+    const response = await axios.get(url, { headers });
+
+    const users = [];
+    if (response.data.elements && response.data.elements.length > 0) {
+      response.data.elements.forEach((userData, index) => {
+        const member = userData.member;
+        const profile = userData['member~'];
+        const personId = member.replace('urn:li:person:', '');
+
+        users.push({
+          id: personId,
+          urn: member,
+          name: profile.localizedFirstName || 'LinkedIn User',
+          firstName: profile.localizedFirstName,
+          headline: profile.headline?.localized?.en_US || '',
+          email: validEmails[index]
+        });
+      });
+    }
+
+    res.json({
+      success: true,
+      users: users,
+      totalFound: users.length,
+      totalSearched: validEmails.length
+    });
+
+  } catch (error) {
+    console.error('LinkedIn users lookup error:', error.response?.data || error.message);
+    res.status(500).json({
+      error: 'Failed to lookup LinkedIn users',
+      details: error.response?.data || error.message
+    });
+  }
+};
+
+// Update exports to include new functions
+module.exports = { 
+  post, 
+  linkedinPost, 
+  linkedinCallback, 
+  getConversations, 
+  sendMessage, 
+  lookupLinkedInUserByEmail, 
+  lookupLinkedInUsersByEmails 
+};
