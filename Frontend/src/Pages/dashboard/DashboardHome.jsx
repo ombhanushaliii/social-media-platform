@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { LogOut, Home, Users, UserCheck, Calendar, Sun, Moon, BarChart3, FileText, Plus, Instagram, Linkedin, Clock, CheckCircle, ChevronDown, MessageSquare } from "lucide-react";
 import PostCreator from "../../Components/PostCreator";
 import LinkedInPostCreator from "../../Components/LinkedInPostCreator";
-import MessagingCenter from "../../Components/MessagingCenter";
+import MessagingCenter from "../../Components/Messaging";
 import { useAuth } from "../../Context/AuthContext";
 
 const navItems = [
