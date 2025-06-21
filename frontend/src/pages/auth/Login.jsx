@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Eye, EyeOff, Mail, Lock, ArrowRight, User } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { signInWithPopup } from "firebase/auth";
-import { auth, provider } from "../../config/Firebase";
+import { auth, provider } from "../../config/firebase";
 import { useAuth } from "../../context/AuthContext";
 import logo from "../../assets/logo.png";
 
