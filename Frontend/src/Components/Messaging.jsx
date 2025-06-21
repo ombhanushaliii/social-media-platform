@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Send, Paperclip, X, Users, MessageSquare, Plus, Search, User } from "lucide-react";
-import { useAuth } from "../Context/AuthContext";
+import { useAuth } from "../context/AuthContext";
 
 const MessagingCenter = ({ isDarkMode, onClose }) => {
   const [conversations, setConversations] = useState([]);

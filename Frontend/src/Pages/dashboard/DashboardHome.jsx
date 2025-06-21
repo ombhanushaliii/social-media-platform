@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from "react";
-import { LogOut, Home, Users, UserCheck, Calendar, Sun, Moon, BarChart3, FileText, Plus, Instagram, Linkedin, Clock, CheckCircle, ChevronDown, MessageSquare } from "lucide-react";
-import PostCreator from "../../Components/PostCreator";
-import LinkedInPostCreator from "../../Components/LinkedInPostCreator";
-import MessagingCenter from "../../Components/Messaging";
-import { useAuth } from "../../Context/AuthContext";
+import { Home, Users, UserCheck, Calendar, Sun, Moon, BarChart3, FileText, Plus, Instagram, Linkedin, Clock, CheckCircle, ChevronDown, MessageSquare, Settings, User, LogOut } from "lucide-react";
+import PostCreator from "../../components/PostCreator";
+import LinkedInPostCreator from "../../components/LinkedInPostCreator";
+import MessagingCenter from "../../components/Messaging";
+import { useAuth } from "../../context/AuthContext";
 
 const navItems = [
   { id: "overview", name: "Overview", icon: Home },
@@ -22,7 +22,13 @@ const Dashboard = () => {
   const [showPlatformDropdown, setShowPlatformDropdown] = useState(false);
   const [showMessagingCenter, setShowMessagingCenter] = useState(false);
   const [posts, setPosts] = useState([]);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [showUpdateUsername, setShowUpdateUsername] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
+  const [updateError, setUpdateError] = useState("");
+  const [isUpdatingUsername, setIsUpdatingUsername] = useState(false);
   const sidebarRef = useRef(null);
+  const userDropdownRef = useRef(null);
   const { user, login } = useAuth();
   
   const [clients, setClients] = useState([
@@ -51,6 +57,31 @@ const Dashboard = () => {
     hover: isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100',
     input: isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300',
     clientIcon: isDarkMode ? 'bg-white text-black' : 'bg-gray-900 text-white',
+  };
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (user?.name) {
+      return user.name.split(' ').map(n => n[0]).join('').toUpperCase();
+    } else if (user?.username) {
+      return user.username.slice(0, 2).toUpperCase();
+    } else if (user?.email) {
+      return user.email.slice(0, 2).toUpperCase();
+    }
+    return 'U';
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+    window.location.href = "/login";
+  };
+
+  // Handle section change
+  const handleSectionChange = (sectionId) => {
+    setActiveSection(sectionId);
+    setSelectedClient(null); // Clear selected client when changing sections
   };
 
   // Listen for LinkedIn callback (token in URL) - FIXED useEffect
@@ -124,18 +155,19 @@ const Dashboard = () => {
     setActiveSection("overview");
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
-    window.location.href = "/login";
-  };
+  // Close user dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target)) {
+        setShowUserDropdown(false);
+      }
+    };
 
-  const handleSectionChange = (sectionId) => {
-    setActiveSection(sectionId);
-    if (selectedClient) {
-      setSelectedClient(null);
-    }
-  };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handlePostSuccess = (postData) => {
     const newPost = {
@@ -214,6 +246,55 @@ const Dashboard = () => {
     console.log('LinkedIn access token present:', !!user?.linkedinAccessToken);
   }, [user]);
 
+  // Update username handler
+  const handleUpdateUsername = async () => {
+    console.log('Attempting to update username:', newUsername); // Debug log
+    
+    if (!newUsername || !newUsername.trim()) {
+      setUpdateError("Username is required");
+      return;
+    }
+
+    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+    if (!usernameRegex.test(newUsername.trim())) {
+      setUpdateError("Username must be 3-20 characters and contain only letters, numbers, and underscores");
+      return;
+    }
+
+    setIsUpdatingUsername(true);
+    setUpdateError("");
+
+    try {
+      const response = await fetch('http://localhost:5000/user/update-username', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        credentials: 'include',
+        body: JSON.stringify({ newUsername: newUsername.trim() }), // Changed from username to newUsername
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to update username');
+      }
+
+      // Update user in context and localStorage
+      const updatedUser = { ...user, username: data.username };
+      login(updatedUser, localStorage.getItem('token'));
+
+      setShowUpdateUsername(false);
+      setNewUsername("");
+      setShowUserDropdown(false);
+    } catch (err) {
+      setUpdateError(err.message || "Failed to update username");
+    } finally {
+      setIsUpdatingUsername(false);
+    }
+  };
+
   return (
     <div 
       className={`flex flex-col h-screen ${themeClasses.bg} ${themeClasses.text} transition-all duration-300`}
@@ -225,9 +306,6 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <h1 className="text-xl font-bold text-blue-600">Whizmedia</h1>
-              
-              {/* LinkedIn Connection Status - In the header */}
-
             </div>
 
             {/* Navigation Items */}
@@ -257,17 +335,57 @@ const Dashboard = () => {
                 {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
               </button>
               
-              <button
-                onClick={handleLogout}
-                className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
-              >
-                <LogOut className="h-5 w-5" />
-              </button>
+              {/* User Avatar Dropdown */}
+              <div className="relative" ref={userDropdownRef}>
+                <button
+                  onClick={() => setShowUserDropdown(!showUserDropdown)}
+                  className="w-10 h-10 bg-blue-600 hover:bg-blue-700 rounded-full flex items-center justify-center text-white font-semibold transition-colors"
+                >
+                  {getUserInitials()}
+                </button>
+
+                {showUserDropdown && (
+                  <div className={`absolute right-0 mt-2 w-48 ${themeClasses.cardBg} ${themeClasses.border} border rounded-lg shadow-lg z-50`}>
+                    <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+                      <p className={`font-semibold ${themeClasses.text}`}>
+                        {user?.name || user?.username || 'User'}
+                      </p>
+                      <p className={`text-sm ${themeClasses.textSecondary}`}>
+                        {user?.email}
+                      </p>
+                    </div>
+                    
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          console.log('Opening update username modal, current user:', user); // Debug log
+                          setShowUpdateUsername(true);
+                          setShowUserDropdown(false);
+                          setNewUsername(user?.username || ""); // Make sure this gets the current username
+                          setUpdateError(""); // Clear any previous errors
+                        }}
+                        className={`w-full text-left px-4 py-2 text-sm ${themeClasses.hover} ${themeClasses.text} flex items-center`}
+                      >
+                        <Settings className="h-4 w-4 mr-2" />
+                        Update Username
+                      </button>
+                      
+                      <button
+                        onClick={handleLogout}
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center"
+                      >
+                        <LogOut className="h-4 w-4 mr-2" />
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Mobile Navigation */}
+        {/* Mobile Navigation - Update this section too */}
         <div className="md:hidden px-6 pb-4">
           <div className="flex space-x-1 overflow-x-auto">
             {navItems.map(({ id, name, icon: Icon }) => (
@@ -287,6 +405,74 @@ const Dashboard = () => {
           </div>
         </div>
       </header>
+
+      {/* Update Username Modal */}
+      {showUpdateUsername && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className={`${themeClasses.cardBg} ${themeClasses.border} rounded-xl border shadow-xl w-full max-w-md`}>
+            <div className="p-6">
+              <h3 className={`text-lg font-semibold mb-4 ${themeClasses.text}`}>Update Username</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${themeClasses.text}`}>
+                    New Username
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 h-4 w-4" />
+                    <input
+                      type="text"
+                      value={newUsername}
+                      onChange={(e) => {
+                        setNewUsername(e.target.value);
+                        setUpdateError(""); // Clear error when user types
+                      }}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          handleUpdateUsername();
+                        }
+                      }}
+                      placeholder="Enter new username"
+                      className={`w-full pl-10 pr-4 py-2 ${themeClasses.input} border rounded-lg focus:border-blue-500 focus:outline-none`}
+                      autoFocus
+                    />
+                  </div>
+                  <p className={`text-xs mt-1 ${themeClasses.textSecondary}`}>
+                    3-20 characters, letters, numbers, and underscores only
+                  </p>
+                </div>
+
+                {updateError && (
+                  <div className="bg-red-800/20 text-red-400 text-sm p-3 rounded-md border border-red-700">
+                    {updateError}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowUpdateUsername(false);
+                    setNewUsername("");
+                    setUpdateError("");
+                  }}
+                  disabled={isUpdatingUsername}
+                  className={`px-4 py-2 rounded-lg transition-colors ${themeClasses.textSecondary} hover:bg-gray-100 dark:hover:bg-gray-700`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpdateUsername}
+                  disabled={isUpdatingUsername || !newUsername.trim()}
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+                >
+                  {isUpdatingUsername ? "Updating..." : "Update"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-1 overflow-hidden">
         {/* Client Sidebar - Always visible */}

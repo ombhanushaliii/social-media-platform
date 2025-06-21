@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Upload, Image as ImageIcon, Type, Send, X, Loader, Linkedin } from "lucide-react";
-import { useAuth } from "../Context/AuthContext";
+import { useAuth } from "../context/AuthContext";
 
 const LinkedInPostCreator = ({ isDarkMode, onClose, onPostSuccess }) => {
   const [content, setContent] = useState("");

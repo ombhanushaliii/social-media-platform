@@ -1,18 +1,45 @@
 const express = require('express');
-const { post, linkedinPost, linkedinCallback, getConversations, sendMessage } = require('../controllers/user.controller');
-const router = express.Router();
+const { 
+  signup, 
+  login, 
+  googleLogin,
+  updateUsername,
+  sendPasswordResetEmail, 
+  sendSignInLinkToEmail, 
+  verifyEmailLink,
+  logout,
+  post,
+  linkedinPost,
+  linkedinCallback,
+  getConversations,
+  sendMessage
+} = require('../controllers/user.controller');
+const { authenticateToken, requireInstagramAccess } = require('../middleware/auth.middleware');
 const upload = require('../multer');
+const router = express.Router();
+
+// Authentication routes
+router.post('/signup', signup);
+router.post('/login', login);
+router.post('/google-login', googleLogin);
+router.post('/forgot-password', sendPasswordResetEmail);
+router.post('/send-signin-link', sendSignInLinkToEmail);
+router.post('/verify-email-link', verifyEmailLink);
+router.post('/logout', logout);
 
 // Social media posting routes
-router.post('/post', upload.single('image'), post); // Instagram
-router.post('/linkedin/post', upload.single('image'), linkedinPost); // LinkedIn
+router.post('/post', authenticateToken, requireInstagramAccess, upload.single('image'), post); // Instagram - restricted
+router.post('/linkedin/post', upload.single('image'), linkedinPost); // LinkedIn - available to all
 
 // LinkedIn OAuth routes
 router.get('/auth/linkedin/callback', linkedinCallback);
 
-// New messaging routes
+// Messaging routes
 router.get('/messages/conversations', getConversations);
 router.post('/messages/send', upload.single('attachment'), sendMessage);
+
+// Protected routes
+router.put('/update-username', authenticateToken, updateUsername);
 
 // Test route for LinkedIn configuration
 router.get('/test/linkedin-config', (req, res) => {

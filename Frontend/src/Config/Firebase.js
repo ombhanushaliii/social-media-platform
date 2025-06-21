@@ -1,20 +1,19 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth"; // ✅ THIS IS REQUIRED
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyB8DbUJL7FvU2ynQiD0wVEgsgF4iRvx4yY", 
-  authDomain: "smms-2f88f.firebaseapp.com", 
-  projectId: "smms-2f88f", 
-  storageBucket: "smms-2f88f.firebasestorage.app", 
-  messagingSenderId: "613458884492", 
-  appId: "1:613458884492:web:02e7eab5dedacf7c2808a9", 
-  measurementId: "G-GFW48H02F3"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "whizsuite", // Match your service account
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 
-// Firebase removed - using hardcoded authentication
-export const auth = null;
-export const provider = null;
+export { auth, provider };
 
 
